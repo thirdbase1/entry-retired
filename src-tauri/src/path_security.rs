@@ -113,32 +113,49 @@ mod tests {
 
     #[test]
     fn interior_paths_resolve() {
+        // Platform-agnostic: the expected value is whatever lexical
+        // normalization of root.join(rel) renders as on this OS.
+        let root = if cfg!(windows) {
+            PathBuf::from("C:\\work\\repo")
+        } else {
+            PathBuf::from("/work/repo")
+        };
+        let root_s = root.to_string_lossy();
         assert_eq!(
-            resolve_workspace_path("src/index.ts", "/work/repo").as_deref(),
-            Some("/work/repo/src/index.ts")
+            resolve_workspace_path("src/index.ts", &root_s).as_deref(),
+            Some(root.join("src/index.ts").to_string_lossy().as_ref())
         );
         assert_eq!(
-            resolve_workspace_path("src/./a/../b.ts", "/work/repo").as_deref(),
-            Some("/work/repo/src/b.ts")
+            resolve_workspace_path("src/./a/../b.ts", &root_s).as_deref(),
+            Some(root.join("src/b.ts").to_string_lossy().as_ref())
         );
     }
 
     #[test]
     fn bash_cwd_rejects_absolute() {
+        let (root, abs_outside) = if cfg!(windows) {
+            (
+                PathBuf::from("C:\\work\\repo"),
+                PathBuf::from("C:\\Windows"),
+            )
+        } else {
+            (PathBuf::from("/work/repo"), PathBuf::from("/etc"))
+        };
+        let root_s = root.to_string_lossy();
         assert_eq!(
-            resolve_bash_working_directory(None, "/work/repo").as_deref(),
-            Some("/work/repo")
+            resolve_bash_working_directory(None, &root_s).as_deref(),
+            Some(root_s.as_ref())
         );
         assert_eq!(
-            resolve_bash_working_directory(Some("apps/web"), "/work/repo").as_deref(),
-            Some("/work/repo/apps/web")
+            resolve_bash_working_directory(Some("apps/web"), &root_s).as_deref(),
+            Some(root.join("apps/web").to_string_lossy().as_ref())
         );
         assert_eq!(
-            resolve_bash_working_directory(Some("/etc"), "/work/repo"),
+            resolve_bash_working_directory(Some(abs_outside.to_str().unwrap()), &root_s),
             None
         );
         assert_eq!(
-            resolve_bash_working_directory(Some("../../etc"), "/work/repo"),
+            resolve_bash_working_directory(Some("../../etc"), &root_s),
             None
         );
     }

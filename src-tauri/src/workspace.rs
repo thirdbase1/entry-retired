@@ -285,7 +285,13 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
         match ws.verify() {
             WorkspaceStatus::Missing { registered_root } => {
-                assert_eq!(registered_root, dir.display().to_string())
+                // Windows canonicalize yields a \\?\ verbatim prefix; compare
+                // the canonical forms, not display strings.
+                assert_eq!(
+                    std::fs::canonicalize(&registered_root).ok(),
+                    std::fs::canonicalize(&dir).ok()
+                );
+                assert!(std::fs::canonicalize(&registered_root).is_err());
             }
             other => panic!("expected Missing, got {other:?}"),
         }
