@@ -121,7 +121,88 @@ For example, the harness should ask for:
 
 It should not care whether execution happens in a local process, Vercel Sandbox, Boat, Modal, or another backend.
 
-## 4. The first implementation
+## 4. Everything is a plugin
+
+**Core architectural rule: if a capability can be isolated behind a stable interface, it should be a replaceable plugin.**
+
+Entry Desktop should not become one giant native implementation. The core stays small and orchestrates capabilities.
+
+Conceptually:
+
+```
+Entry Desktop Core
+├── UI plugins
+├── Agent plugins
+├── Model plugins
+├── Tool plugins
+├── MCP plugins
+├── Sandbox plugins
+├── Workspace plugins
+├── Terminal plugins
+├── Storage plugins
+└── Integration plugins
+```
+
+Examples include Local/Vercel/Boat/Modal sandbox plugins, remote/local model plugins, terminal implementations, storage implementations, MCP transports, Git providers, indexing/search engines, authentication integrations, and optional UI panels.
+
+The plugin boundary defines **capabilities and contracts**, not implementation details.
+
+A plugin should be independently replaceable, explicitly registered, capability-described, permission-aware, observable, testable, lifecycle-aware, and versionable where necessary.
+
+### What stays core?
+
+Keep the core as small as possible:
+
+- plugin registry
+- capability model
+- task lifecycle
+- event model
+- permission/approval policy
+- IPC boundary
+- configuration
+- plugin lifecycle
+
+### Plugin lifecycle
+
+```
+discovered → validated → registered → initialized → ready → running → stopped
+```
+
+Plugins that start processes, open sockets, allocate resources, or create subscriptions must have cleanup semantics.
+
+### Plugin permissions
+
+Plugins must declare capabilities such as:
+
+```
+filesystem.read
+filesystem.write
+process.spawn
+network.connect
+credentials.read
+git.write
+mcp.start
+```
+
+The runtime decides whether those capabilities are allowed. Plugin architecture must not become an unrestricted escape hatch.
+
+### Plugin-first development rule
+
+For every new feature ask:
+
+1. Does this genuinely need to be core?
+2. Can it be a plugin?
+3. What capability contract does it need?
+4. What permissions does it require?
+5. What lifecycle does it have?
+6. Can another implementation replace it?
+7. Can the harness work without it?
+
+If the feature can operate independently, that is strong evidence it belongs outside the core.
+
+---
+
+## 5. The first implementation
 
 The first implementation is intentionally small:
 
