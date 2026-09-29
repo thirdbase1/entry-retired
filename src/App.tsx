@@ -11,6 +11,14 @@ import {
   type BashResult,
   type ReadResult,
 } from "./native";
+import {
+  sessionInfo,
+  signOut,
+  modelCatalog,
+  type SessionInfo,
+  type CatalogModel,
+} from "./auth";
+import { LoginScreen } from "./LoginScreen";
 
 interface OutputLine {
   stream: "stdout" | "stderr";
@@ -36,6 +44,56 @@ export function App() {
   const [readOut, setReadOut] = useState<ReadResult | null>(null);
   const [chip, setChip] = useState<"ok" | "fail" | null>(null);
   const [chipText, setChipText] = useState("");
+  const [session, setSession] = useState<SessionInfo | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+  const [models, setModels] = useState<CatalogModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
+  const [reasoningEffort, setReasoningEffort] = useState("");
+
+  useEffect(() => {
+    sessionInfo()
+      .then((s) => {
+        setSession(s);
+        setSessionLoaded(true);
+        if (s.signedIn) {
+          modelCatalog()
+            .then((m) => {
+              setModels(m);
+              if (m.length > 0) setSelectedModel((cur) => cur || m[0].id);
+            })
+            .catch(() => setModels([]));
+        }
+      })
+      .catch(() => setSessionLoaded(true));
+  }, []);
+
+  function refreshSession() {
+    sessionInfo().then((s) => {
+      setSession(s);
+      if (s.signedIn) {
+        modelCatalog()
+          .then((m) => {
+            setModels(m);
+            if (m.length > 0) setSelectedModel((cur) => cur || m[0].id);
+          })
+          .catch(() => setModels([]));
+      }
+    });
+  }
+
+  if (!sessionLoaded) {
+    return (
+      <main className="shell">
+        <div className="login-waiting" style={{ margin: "auto" }}>
+          <span className="spinner" /> Loading…
+        </div>
+      </main>
+    );
+  }
+
+  if (!session?.signedIn) {
+    return <LoginScreen onSignedIn={refreshSession} />;
+  }
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -71,6 +129,8 @@ export function App() {
         taskId: nextTaskId,
         request,
         workspace,
+        modelId: selectedModel || null,
+        reasoningEffort: reasoningEffort || null,
       });
       setStatus(result);
     } catch (error) {
@@ -157,6 +217,37 @@ export function App() {
       <header className="topbar">
         <span className="brand">ENTRY</span>
         <span className="runtime">LOCAL RUNTIME · {busy ? "RUNNING" : "READY"}</span>
+        <div className="topbar-right">
+          <select
+            className="model-picker"
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            aria-label="Model"
+          >
+            {models.length === 0 && <option value="">No models available</option>}
+            {models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name || m.id}
+              </option>
+            ))}
+          </select>
+          <span className="account-chip" title={session.email ?? ""}>
+            <span className="account-dot" />
+            {session.username} · {session.plan ?? "free"} ·{" "}
+            {session.creditBalanceCents != null
+              ? `$${(session.creditBalanceCents / 100).toFixed(2)}`
+              : "—"}
+          </span>
+          <button
+            className="btn-ghost account-signout"
+            onClick={async () => {
+              await signOut();
+              setSession(null);
+            }}
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       <section className="workspace-panel">
@@ -172,6 +263,21 @@ export function App() {
         <label>
           Task
           <textarea value={request} onChange={(e) => setRequest(e.target.value)} placeholder="Ask Entry to inspect, change, and verify this repository…" rows={5} />
+        </label>
+
+        <label>
+          Reasoning effort
+          <select
+            value={reasoningEffort}
+            onChange={(e) => setReasoningEffort(e.target.value)}
+          >
+            <option value="">Model default</option>
+            {(models.find((m) => m.id === selectedModel)?.reasoning_levels ?? ["low","medium","high"]).map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {lvl}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="actions">

@@ -29,8 +29,10 @@ pub async fn run(
     workspace: PathBuf,
     app: tauri::AppHandle,
     reasoning_effort: Option<String>,
+    model_id: Option<String>,
+    session: Option<crate::backend::BackendSession>,
 ) -> Result<String, String> {
-    let registry = PluginRegistry::new(workspace.clone())?;
+    let registry = PluginRegistry::new(workspace.clone(), session, model_id)?;
     let runtime = registry.local_runtime.clone();
     let state_path = task_path(&workspace, &task_id)?;
 

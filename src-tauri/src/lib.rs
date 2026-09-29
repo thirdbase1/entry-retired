@@ -73,6 +73,8 @@ impl AppState {
 }
 
 mod agent;
+mod backend;
+mod device_auth;
 mod integrations;
 mod model_selection;
 mod network;
@@ -90,6 +92,8 @@ struct AgentRequest {
     /// Optional reasoning-effort selection ("low"/"medium"/"high"/...).
     /// Sanitized against the model's real vocabulary before use.
     reasoning_effort: Option<String>,
+    /// Model chosen in the picker (backend catalog id).
+    model_id: Option<String>,
 }
 
 #[tauri::command]
@@ -341,7 +345,7 @@ fn plugins() -> Vec<integrations::PluginDescriptor> {
 
 #[tauri::command]
 fn plugin_status(workspace: String) -> Vec<(&'static str, Vec<&'static str>)> {
-    match plugin::PluginRegistry::new(std::path::PathBuf::from(workspace)) {
+    match plugin::PluginRegistry::new(std::path::PathBuf::from(workspace), None, None) {
         Ok(registry) => registry.descriptors(),
         Err(_) => vec![],
     }
@@ -354,12 +358,15 @@ async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String,
     if !workspace.is_dir() {
         return Err("Workspace must be a directory.".into());
     }
+    let session = crate::backend::BackendSession::load(&app);
     agent::run(
         input.task_id,
         input.request,
         workspace,
         app,
         input.reasoning_effort,
+        input.model_id,
+        session,
     )
     .await
 }
@@ -367,6 +374,7 @@ async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String,
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             native_status,
@@ -382,6 +390,11 @@ pub fn run() {
             // Agent runtime + plugins (merged from remote)
             plugin_status,
             plugins,
+            device_auth::device_start,
+            device_auth::device_poll,
+            device_auth::session_info,
+            device_auth::sign_out,
+            device_auth::model_catalog,
             run_agent
         ])
         .run(tauri::generate_context!())

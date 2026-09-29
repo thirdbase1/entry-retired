@@ -9,6 +9,9 @@ pub struct ModelClient {
     base_url: String,
     api_key: Option<String>,
     model: String,
+    /// When set, requests go to the desktop backend's chat route authenticated
+    /// by the session token (device-flow login) instead of a local gateway key.
+    session_token: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -81,6 +84,30 @@ impl ModelClient {
             base_url,
             api_key,
             model,
+            session_token: None,
+        })
+    }
+
+    /// Backend-session mode: base_url is the desktop backend, the session
+    /// token authenticates every call, and the model comes from the picker.
+    pub fn with_session(
+        backend_url: String,
+        session_token: String,
+        model_id: String,
+    ) -> Result<Self, String> {
+        let client = Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(120))
+            .pool_idle_timeout(Duration::from_secs(30))
+            .tcp_keepalive(Duration::from_secs(30))
+            .build()
+            .map_err(|e| e.to_string())?;
+        Ok(Self {
+            client,
+            base_url: backend_url.trim_end_matches('/').to_string(),
+            api_key: None,
+            model: model_id,
+            session_token: Some(session_token),
         })
     }
 
@@ -105,11 +132,20 @@ impl ModelClient {
         let mut last_error = "network request failed".to_string();
 
         for attempt in 0..4 {
+            let path = if self.session_token.is_some() {
+                "/api/desktop/chat"
+            } else {
+                "/chat/completions"
+            };
             let mut builder = self
                 .client
-                .post(format!("{}/chat/completions", self.base_url))
+                .post(format!("{}{}", self.base_url, path))
+                .header("x-entry-desktop", "tauri")
+                .header("Origin", "tauri://localhost")
                 .json(&request);
-            if let Some(key) = &self.api_key {
+            if let Some(token) = &self.session_token {
+                builder = builder.bearer_auth(token);
+            } else if let Some(key) = &self.api_key {
                 builder = builder.bearer_auth(key);
             }
 

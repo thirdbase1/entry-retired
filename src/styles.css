@@ -387,3 +387,104 @@ input:focus, textarea:focus { border-color: #52525b; }
 article { padding: 17px 0; border-top: 1px solid #18181b; }
 article p { margin: 7px 0 0; white-space: pre-wrap; color: #a1a1aa; line-height: 1.55; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
 @media (max-width: 700px) { .shell { width: min(100% - 28px, 1040px); } .workspace-panel { margin-top: 10vh; } h1 { font-size: 48px; } .actions { flex-direction: column; } }
+
+
+/* ---- Login screen + account chrome (Phase 3) ---- */
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg, #0a0a0a);
+}
+.login-card {
+  background: #111;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  padding: 40px;
+  width: min(400px, calc(100vw - 32px));
+  text-align: center;
+}
+.login-logo {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 20px;
+}
+.login-card h1 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  margin: 0 0 8px;
+}
+.login-sub {
+  color: #a1a1a1;
+  font-size: 14px;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+.device-code {
+  font-family: ui-monospace, monospace;
+  font-size: 22px;
+  letter-spacing: 3px;
+  background: #171717;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.login-btn { width: 100%; justify-content: center; margin-top: 8px; }
+.btn-primary {
+  background: #ededed;
+  color: #0a0a0a;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-primary:hover { background: #fff; }
+.btn-ghost {
+  background: transparent;
+  color: #a1a1a1;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-ghost:hover { color: #ededed; border-color: #404040; }
+.login-foot { color: #666; font-size: 12px; margin-top: 16px; }
+.login-error { color: #f87171; font-size: 13px; margin-bottom: 12px; }
+.login-waiting {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  color: #a1a1a1; font-size: 14px; margin: 8px 0 16px;
+}
+.spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid #262626; border-top-color: #ededed;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.model-picker {
+  background: #171717;
+  color: #ededed;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+.account-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #171717; border: 1px solid #262626; border-radius: 999px;
+  padding: 6px 12px; font-size: 12px; color: #a1a1a1;
+}
+.account-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+.account-signout { padding: 6px 10px; font-size: 12px; }

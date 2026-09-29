@@ -532,3 +532,14 @@ backend only, entry-agents untouched:
 - Next 15 pageProps searchParams is a Promise. App Router needs app/layout.tsx.
 - Python-written TS with backticks breaks (\\` literals) — write template
   literals carefully or move styles to globals.css.
+
+44. Desktop UI wired to live backend (Phase 3 MVP complete end-to-end path):
+- src/auth.ts wraps device_start/device_poll/session_info/sign_out/model_catalog
+- LoginScreen: show code → open browser (tauri-plugin-opener) → poll → auto-connect
+- App: session gate (not signed in = login screen), topbar model picker +
+  account chip (plan/balance) + sign out; run_agent passes modelId/reasoningEffort
+- Rust: backend.rs (BackendSession in app-data dir, 0600 perms; fetch_me/
+  fetch_models), device_auth.rs (5 commands), network.rs ModelClient::with_session
+  → /api/desktop/chat with Bearer session token; PluginRegistry::new(session, model)
+- Tauri command params are camelCase from JS (modelId → model_id field)
+- tauri-plugin-opener needs BOTH npm pkg and Cargo dep + .plugin(init())

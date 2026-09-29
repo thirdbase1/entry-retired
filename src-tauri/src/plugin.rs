@@ -20,6 +20,18 @@ impl ModelProviderPlugin {
             client: ModelClient::from_env()?,
         })
     }
+
+    /// Backend-session provider: model calls go through the desktop backend
+    /// with the stored device-flow session token.
+    pub fn from_session(
+        backend_url: String,
+        token: String,
+        model_id: String,
+    ) -> Result<Self, String> {
+        Ok(Self {
+            client: ModelClient::with_session(backend_url, token, model_id)?,
+        })
+    }
 }
 
 impl Plugin for ModelProviderPlugin {
@@ -37,10 +49,28 @@ pub struct PluginRegistry {
 }
 
 impl PluginRegistry {
-    pub fn new(workspace: std::path::PathBuf) -> Result<Self, String> {
+    /// Build the registry with an optional backend session + model override
+    /// (from the desktop login). Falls back to env-configured gateway keys
+    /// when no session exists.
+    pub fn new(
+        workspace: std::path::PathBuf,
+        session: Option<crate::backend::BackendSession>,
+        model_id: Option<String>,
+    ) -> Result<Self, String> {
+        let model_provider = match (session, model_id) {
+            (Some(s), Some(m)) => {
+                ModelProviderPlugin::from_session(s.backend_url, s.session_token, m)?
+            }
+            (Some(s), None) => ModelProviderPlugin::from_session(
+                s.backend_url,
+                s.session_token,
+                "qwen3.8-flash:free".to_string(),
+            )?,
+            (None, _) => ModelProviderPlugin::from_env()?,
+        };
         Ok(Self {
             local_runtime: Arc::new(LocalRuntimePlugin::new(workspace)),
-            model_provider: Arc::new(ModelProviderPlugin::from_env()?),
+            model_provider: Arc::new(model_provider),
         })
     }
 
