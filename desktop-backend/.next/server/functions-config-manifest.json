@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/desktop/chat": {
+      "maxDuration": 120
+    },
+    "/api/desktop/me": {},
+    "/api/desktop/models": {},
+    "/api/desktop/proxy/[service]": {}
+  }
+}

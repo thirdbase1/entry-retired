@@ -1,0 +1,6 @@
+{
+  "/api/desktop/chat/route": "/api/desktop/chat",
+  "/api/desktop/me/route": "/api/desktop/me",
+  "/api/desktop/models/route": "/api/desktop/models",
+  "/api/desktop/proxy/[service]/route": "/api/desktop/proxy/[service]"
+}

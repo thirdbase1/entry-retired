@@ -501,3 +501,16 @@ model-access, db) — a standalone backend cannot reuse them. Gotchas fixed:
 - Next 15 dynamic route handlers: ctx.params is a Promise — export GET/POST wrappers that await it
 - bearer() plugin added to betterAuth config so desktop Bearer tokens resolve through the same session store
 - Deploy: vercel CLI from repo root (project root setting = repo root), token via --token
+
+42+. Separate desktop backend (entry-desktop-backend.vercel.app), standalone
+Next app in desktop-backend/. Auth model verified against better-auth 1.6.29:
+sessions live in auth_sessions (token UNIQUE, expires_at); bearer = that token,
+looked up + joined with users for plan/credit_balance_cents. Pairing = web
+minted one-time code mapping to the current session token. Postgres client
+MUST be lazy (getSql()) — postgres() throws at import when DATABASE_URL is
+empty during Next page-data collection. CORS guard must run BEFORE auth check
+(browsers → 403, tauri origin w/o token → 401). Deploy: vercel link → pull →
+build --prod → deploy --prebuilt (their cloud npm install was flaky;
+prebuilt skips it). Env set per-key via POST /v10/projects/<p>/env?upsert=true.
+Entry-agents repo REVERTED to c7769d4 and prod redeployed clean (dpl
+F4ReJh promoted) after my unauthorized in-app change — never touch upstream.

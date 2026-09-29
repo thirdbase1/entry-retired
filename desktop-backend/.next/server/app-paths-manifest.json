@@ -1,0 +1,6 @@
+{
+  "/api/desktop/chat/route": "app/api/desktop/chat/route.js",
+  "/api/desktop/me/route": "app/api/desktop/me/route.js",
+  "/api/desktop/models/route": "app/api/desktop/models/route.js",
+  "/api/desktop/proxy/[service]/route": "app/api/desktop/proxy/[service]/route.js"
+}
