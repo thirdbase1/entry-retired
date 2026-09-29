@@ -469,3 +469,11 @@ Entry Desktop has moved from the window foundation into a working local-first ag
 The reconnect policy is task-state based: transient model/network failures are retried with bounded backoff, and if the request still fails, the task state remains persisted so a later run can resume instead of rebuilding the task from scratch. Cloud sandboxes are not used as a fallback.
 
 This is deliberately not a full reproduction of the web runtime. Desktop owns the native execution boundary while reusing Entry's proven behavioral contracts and system-prompt principles.
+
+## Lessons 34-38 — Phase 3: agent loop, gateway, auth (research briefs in docs/research-2026-09.md)
+
+34. **Upstream has no hand-written loop** — it's Vercel AI SDK's ToolLoopAgent; the outer loop lives in the host workflow (runAgentWorkflow), the inner model→tool→model loop in stopWhen/stepCountIs. Our Rust loop (agent.rs MAX_TURNS) mirrors the outer loop; port prepareStep ideas (read-before-edit state rebuild, compaction) later.
+35. **Gateway is Entry's own OpenAI-compatible service**: env GATEWAY_BASE_URL + GATEWAY_API_KEY (upstream models.ts). Desktop uses ENTRY_MODEL_BASE_URL/ENTRY_MODEL_ID/ENTRY_MODEL_API_KEY from env — the ModelProviderPlugin. Model catalog = GET {baseURL}/models.
+36. **Auth: agent never sees tokens** — web injects GithubToolContext/VercelToolContext closures; GitHub App tokens are minted scoped + revoked in finally; Vercel token set via sandbox.setVercelAuthToken, never the command line. Desktop equivalent: Tauri commands doing token brokering, tokens never in model context.
+37. **Logo**: apps/web/public/entry-logo.svg (+jpg, favicon.svg) — copied to src-tauri/icons/brand/.
+38. **Merged remote code didn't compile** (stray literal \n sequences in agent.rs, Arc<PathBuf> vs PathBuf in runtime.rs). Never trust pushed code — cargo check before building on it. And its bash tool promised approval refusal without enforcing it; wired through approval.rs.
