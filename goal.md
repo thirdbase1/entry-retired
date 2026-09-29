@@ -638,13 +638,19 @@ Completed.
 
 ### Phase 1 — Native agent runtime
 
-Current phase. Build:
+Current phase. The working vertical slice now includes:
 
-- command execution,
-- streaming process output,
-- cancellation,
-- filesystem APIs,
-- workspace detection.
+- native local workspace resolution,
+- bounded `bash`, `read_file`, `write_file`, and `edit_file` tools,
+- native process execution with a 120s timeout,
+- replaceable model-provider plugin,
+- local runtime plugin,
+- model/network retry and reconnect policy,
+- persisted task state and resume,
+- task/tool lifecycle events to the UI,
+- dangerous/sensitive command refusal until the approval UI is added.
+
+Still intentionally deferred from this phase: PTY interaction, full process-tree cancellation, MCP, cloud sandbox plugins, and the complete approval UI.
 
 ### Phase 2 — Terminal
 
