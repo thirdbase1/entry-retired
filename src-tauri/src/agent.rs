@@ -1,4 +1,4 @@
-use crate::{network::{ChatMessage, FunctionCall, ModelClient, ToolCall}, runtime::LocalRuntimePlugin};
+use crate::{network::{ChatMessage, FunctionCall}, plugin::PluginRegistry, runtime::LocalRuntimePlugin};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{path::PathBuf, sync::Arc};
@@ -25,8 +25,8 @@ pub async fn run(
     workspace: PathBuf,
     app: tauri::AppHandle,
 ) -> Result<String, String> {
-    let runtime = Arc::new(LocalRuntimePlugin::new(workspace.clone()));
-    let model = ModelClient::from_env()?;
+    let registry = PluginRegistry::new(workspace.clone())?;
+    let runtime = registry.local_runtime.clone();
     let state_path = task_path(&workspace, &task_id)?;
 
     let mut state = if state_path.exists() {
@@ -56,7 +56,7 @@ pub async fn run(
     for _ in 0..MAX_TURNS {
         let tools = tool_definitions();
         emit(&app, &task_id, "model.request", "Requesting the model…");
-        let reply = model.chat(&state.messages, &tools).await?;
+        let reply = match registry.chat(&state.messages, &tools).await {\n            Ok(reply) => reply,\n            Err(error) => {\n                emit(&app, &task_id, "task.error", &error);\n                return Err(error);\n            }\n        };
         state.messages.push(reply.clone());
         persist(&state_path, &state).await?;
 
