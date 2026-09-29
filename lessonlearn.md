@@ -491,3 +491,13 @@ This is deliberately not a full reproduction of the web runtime. Desktop owns th
 41. **Upstream auth is cookie-session only.** No bearer, no PKCE, no device code, no deep links. My /api/desktop/* routes assumed a bearer flow that doesn't exist — the fix is Better Auth's official bearer() plugin + a pairing-code handshake (docs/desktop-auth-design.md): browser sign-in → one-time pairing code → desktop exchanges it for a session token → keychain storage.
 42. **Billing is Bachs now, not Paystack** ("Replaces the Paystack client outright" — bachs.ts). Money = decimal strings, ledger = USD cents; webhook (X-Bachs-Signature-V2 HMAC) is source of truth; checkout is a hosted browser flow the desktop opens externally and observes via /api/billing/me. My earlier Paystack→Stripe→Paystack churn was wrong twice; verify the LIVE provider before writing proxy code.
 43. **Desktop never holds: GITHUB_APP_PRIVATE_KEY (server mints scoped single-repo installation tokens, revoked in finally), Vercel OAuth tokens (server-side network brokering), gateway keys.** GitHub App install = system browser + existing cookie route; agent repo access goes through the proxy, which mints per-operation tokens.
+
+41+. Desktop routes deployed INSIDE the entry-agents web app (not a separate
+backend): app/api/desktop/{me,models,chat,proxy/[service]} + lib/desktop-auth.
+Reason: they import @/lib/* upstream modules directly (credit-ledger, plans,
+model-access, db) — a standalone backend cannot reuse them. Gotchas fixed:
+- estimateModelUsageCost(usage, cost) — usage = {inputTokens,cachedInputTokens,cacheWriteInputTokens?,outputTokens}; cost from models-with-context catalog
+- filterModelsForSession(models, session, url) — SessionLike = Pick<Session,"authProvider"|"user">, authProvider is "vercel"|"github" union, user needs username+avatar
+- Next 15 dynamic route handlers: ctx.params is a Promise — export GET/POST wrappers that await it
+- bearer() plugin added to betterAuth config so desktop Bearer tokens resolve through the same session store
+- Deploy: vercel CLI from repo root (project root setting = repo root), token via --token
