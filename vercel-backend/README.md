@@ -15,14 +15,14 @@ of truth for plans, ledger, and sessions).
 | `/api/desktop/me` | GET | Plan, credit balance, usage windows, identity |
 | `/api/desktop/models` | GET | Model catalog filtered by plan + credit gates, with per-model reasoning vocabularies |
 | `/api/desktop/chat` | POST | **Model proxy** — calls entry-gateway with the server-held key, enforces plan/credit gates, debits usage |
-| `/api/desktop/proxy/[service]` | GET/POST | **Generic secret proxy** for github / vercel / openai / stripe |
+| `/api/desktop/proxy/[service]` | GET/POST | **Generic secret proxy** for github / vercel / openai / paystack |
 
 ## Security model
 
 1. **Zero client secrets** — the desktop app authenticates with a Better
    Auth session token (`Authorization: Bearer <token>`). Nothing else.
 2. **Secure key proxying** — `GATEWAY_API_KEY`, `OPENAI_SECRET_KEY`,
-   `VERCEL_API_SECRET_KEY`, `STRIPE_SECRET_KEY` are read from
+   `VERCEL_API_SECRET_KEY`, `PAYSTACK_SECRET_KEY` are read from
    `process.env` server-side only. Responses are stripped of
    `set-cookie`/`authorization`/`server` headers before returning.
 3. **CORS** — requests must (a) originate from a Tauri custom protocol
@@ -44,7 +44,7 @@ of truth for plans, ledger, and sessions).
 | `UPSTASH_REDIS_REST_TOKEN` | rate limiting | |
 | `OPENAI_SECRET_KEY` | proxy/openai | optional; 503 when absent |
 | `VERCEL_API_SECRET_KEY` | proxy/vercel | optional |
-| `STRIPE_SECRET_KEY` | proxy/stripe | optional, GET-only |
+| `PAYSTACK_SECRET_KEY` | proxy/paystack | optional, GET-only (billing is Paystack upstream) |
 | — | proxy/github | no secret: uses the caller's own GitHub token |
 
 (Auth/DB env — `BETTER_AUTH_SECRET`, `POSTGRES_URL` — are shared with the
