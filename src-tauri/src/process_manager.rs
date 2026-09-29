@@ -291,7 +291,12 @@ impl ProcessManager {
             }
         };
 
-        // Final drain + reader reap.
+        // Reap readers FIRST, then drain — a reader thread may not have
+        // flushed its pipe into the channel yet when the child exits fast
+        // (CI machines are heavily loaded; seen as an empty-stdout flake).
+        for r in readers {
+            let _ = r.join();
+        }
         while let Ok(chunk) = rx.try_recv() {
             if chunk.stream == "stdout" {
                 stdout.push_str(&chunk.text);
@@ -300,9 +305,6 @@ impl ProcessManager {
                 stderr.push_str(&chunk.text);
                 stderr.push('\n');
             }
-        }
-        for r in readers {
-            let _ = r.join();
         }
         let _ = child.wait(); // unconditional reap — cleanup on every path
 
