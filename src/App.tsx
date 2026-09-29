@@ -46,6 +46,25 @@ export function App() {
     }
   }
 
+  async function resumeLastTask() {
+    if (!workspace.trim()) return;
+    const savedTaskId = localStorage.getItem("entry-desktop-task-id");
+    if (!savedTaskId) return;
+    setBusy(true);
+    setEvents([]);
+    try {
+      const result = await invoke<string>("run_agent", {
+        taskId: savedTaskId,
+        request: "resume",
+        workspace,
+      });
+      setStatus(result);
+    } catch (error) {
+      setStatus(String(error));
+      setBusy(false);
+    }
+  }
+
   async function checkNativeCore() {
     try {
       setStatus(await invoke<string>("native_status"));
@@ -80,7 +99,7 @@ export function App() {
           <button onClick={runAgent} disabled={busy || !workspace.trim() || !request.trim()}>
             {busy ? "Agent running…" : "Run agent"}
           </button>
-          <button className="secondary" onClick={checkNativeCore}>Check runtime</button>
+          <button className="secondary" onClick={resumeLastTask} disabled={busy || !workspace.trim()}>Resume last task</button>\n          <button className="secondary" onClick={checkNativeCore}>Check runtime</button>
         </div>
       </section>
 
