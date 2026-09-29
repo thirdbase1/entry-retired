@@ -377,3 +377,12 @@ Approvals are bound to the execution context and are re-evaluated when the backe
 
 ### Decision
 Make execution backend identity part of every task and operation, with local as the default. Keep remote sandbox provisioning explicitly opt-in.
+
+
+## Native agent runtime checkpoint — 2026-09-29
+
+Entry Desktop has moved from the window foundation into a working local-first agent vertical slice. The runtime now has a real plugin registry, a local execution plugin, a replaceable OpenAI-compatible model plugin, bounded model-network retries, persisted task state under `.entry/tasks/`, and native tool execution on the user's machine.
+
+The reconnect policy is task-state based: transient model/network failures are retried with bounded backoff, and if the request still fails, the task state remains persisted so a later run can resume instead of rebuilding the task from scratch. Cloud sandboxes are not used as a fallback.
+
+This is deliberately not a full reproduction of the web runtime. Desktop owns the native execution boundary while reusing Entry's proven behavioral contracts and system-prompt principles.
