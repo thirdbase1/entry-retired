@@ -361,3 +361,19 @@ When uncertain, prefer:
 over:
 
 **large rewrite → assumptions → debugging everything at once.**
+
+
+## 2026-09-29 — Local system is the default sandbox
+
+### Lesson
+The user's local machine is the default execution environment. Desktop is not a cloud-sandbox client wrapped in a desktop window.
+
+Cloud sandboxes are disabled by default and must never become an automatic fallback when local execution fails.
+
+### Approval lifecycle
+Approval covers the whole request lifecycle: request → task → backend → workspace/policy → model action → validation → approval → execution → observation → audit → state → next action.
+
+Approvals are bound to the execution context and are re-evaluated when the backend changes. Cloud provisioning cannot happen merely because local execution failed.
+
+### Decision
+Make execution backend identity part of every task and operation, with local as the default. Keep remote sandbox provisioning explicitly opt-in.
