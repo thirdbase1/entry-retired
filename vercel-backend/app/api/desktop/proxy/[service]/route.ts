@@ -12,9 +12,9 @@
  *                                     supplied and is validated first)
  *   vercel  → api.vercel.com
  *   openai  → api.openai.com        (OPENAI_SECRET_KEY env only)
- *   paystack → api.paystack.co      (PAYSTACK_SECRET_KEY env only, GET only;
- *                                     billing goes through Paystack upstream,
- *                                     NOT Stripe)
+ *   bachs   → Bachs billing API     (BACHS_API_KEY env only, GET only;
+ *                                     upstream's live billing provider —
+ *                                     replaced Paystack outright)
  *
  * Everything is scoped to the authenticated desktop user and rate-limited.
  */
@@ -41,7 +41,7 @@ const SERVICES: Record<string, ServiceConfig> = {
   github: { host: "api.github.com", authScheme: "token", methods: ["GET", "POST"] },
   vercel: { host: "api.vercel.com", secretEnv: "VERCEL_API_SECRET_KEY", authScheme: "bearer", methods: ["GET", "POST"] },
   openai: { host: "api.openai.com", secretEnv: "OPENAI_SECRET_KEY", authScheme: "bearer", methods: ["POST"] },
-  paystack: { host: "api.paystack.co", secretEnv: "PAYSTACK_SECRET_KEY", authScheme: "bearer", methods: ["GET"] },
+  bachs: { host: "api.bachs.co", secretEnv: "BACHS_API_KEY", authScheme: "bearer", methods: ["GET"] },
 };
 
 /** Response headers never proxied back to the client. */
