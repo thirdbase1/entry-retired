@@ -41,11 +41,14 @@ impl LocalRuntimePlugin {
             return Err("Absolute paths are refused; use workspace-relative paths.".into());
         }
         let joined = self.workspace.join(path);
-        let normalized = dunce::canonicalize(&joined).or_else(|_| {
-            let parent = joined.parent().ok_or_else(|| "Invalid path".to_string())?;
-            let parent = dunce::canonicalize(parent).map_err(|_| "Parent path does not exist".to_string())?;
-            Ok::<PathBuf, String>(parent.join(joined.file_name().ok_or_else(|| "Invalid path".to_string())?))
-        })?;
+        let normalized = match dunce::canonicalize(&joined) {
+            Ok(path) => path,
+            Err(_) => {
+                let parent = joined.parent().ok_or_else(|| "Invalid path".to_string())?;
+                let parent = dunce::canonicalize(parent).map_err(|_| "Parent path does not exist".to_string())?;
+                parent.join(joined.file_name().ok_or_else(|| "Invalid path".to_string())?)
+            }
+        };
         if !normalized.starts_with(self.workspace.as_path()) {
             return Err("Path escapes the workspace.".into());
         }
