@@ -110,7 +110,7 @@ fn pipeline_runs_allowed_command_in_workspace_subdir() {
     assert!(out.status.success());
     assert_eq!(
         String::from_utf8_lossy(&out.stdout).trim().to_lowercase(),
-        cwd.to_string_lossy().trim_end_matches('\\').to_lowercase()
+        cwd.trim_end_matches('\\').to_lowercase()
     );
     std::fs::remove_dir_all(&repo).ok();
 }
