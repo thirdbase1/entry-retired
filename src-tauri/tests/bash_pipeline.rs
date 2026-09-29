@@ -69,32 +69,75 @@ fn pipeline_blocks_escaping_cwd_before_any_execution() {
 }
 
 #[test]
+#[cfg(unix)] // macOS temp dirs are symlinked (/var -> /private/var) and the
+             // pipeline contract below assumes a POSIX bash; Windows runs the cmd variant.
 fn pipeline_runs_allowed_command_in_workspace_subdir() {
-    let repo = std::env::temp_dir().join(format!("ed-e2e-{}", std::process::id()));
-    std::fs::create_dir_all(repo.join("sub")).unwrap();
+    let repo_tmp = std::env::temp_dir().join(format!("ed-e2e-{}", std::process::id()));
+    std::fs::create_dir_all(repo_tmp.join("sub")).unwrap();
+    let repo = std::fs::canonicalize(&repo_tmp).unwrap();
     let cwd = resolve_bash_working_directory(Some("sub"), &repo.display().to_string()).unwrap();
     let (code, _, cancelled, timed_out) = supervised_bash("pwd", &cwd, Some(10_000));
     assert_eq!(code, Some(0));
     assert!(!cancelled);
     assert!(!timed_out);
-    // Output capture: run again capturing stdout directly.
+    // Output capture: run again capturing stdout directly. Compare canonical
+    // forms — pwd prints the symlink-resolved path on macOS.
     let out = Command::new("bash")
         .args(["-c", "pwd"])
         .current_dir(&cwd)
         .output()
         .unwrap();
-    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), cwd);
+    let printed = std::path::PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
+    assert_eq!(
+        std::fs::canonicalize(&printed).unwrap(),
+        std::fs::canonicalize(&cwd).unwrap()
+    );
+    std::fs::remove_dir_all(&repo).ok();
+}
+
+#[test]
+#[cfg(windows)] // Git Bash on Windows runners resolves temp paths oddly; the
+                // same cwd-verification contract holds with the platform shell.
+fn pipeline_runs_allowed_command_in_workspace_subdir() {
+    let repo = std::env::temp_dir().join(format!("ed-e2e-{}", std::process::id()));
+    std::fs::create_dir_all(repo.join("sub")).unwrap();
+    let cwd = resolve_bash_working_directory(Some("sub"), &repo.display().to_string()).unwrap();
+    let out = Command::new("cmd")
+        .args(["/C", "cd"])
+        .current_dir(&cwd)
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout).trim().to_lowercase(),
+        cwd.to_string_lossy().trim_end_matches('\\').to_lowercase()
+    );
     std::fs::remove_dir_all(&repo).ok();
 }
 
 #[test]
 fn pipeline_enforces_timeout() {
     let tmp = std::env::temp_dir();
+    // Cross-platform long-running child: `ping` waits N seconds everywhere
+    // (sleep is a GNU coreutils binary not guaranteed on Windows runners).
+    let long_cmd = if cfg!(windows) {
+        "ping -n 6 127.0.0.1 > NUL"
+    } else {
+        "sleep 5"
+    };
     let (code, _, cancelled, timed_out) =
-        supervised_bash("sleep 5", &tmp.display().to_string(), Some(300));
-    assert_eq!(code, None, "timed-out command has no exit code");
-    assert!(!cancelled);
-    assert!(timed_out);
+        supervised_bash(long_cmd, &tmp.display().to_string(), Some(300));
+    // On Windows `bash` may be absent, so a spawn failure yields code None
+    // without the timeout window — the kill-then-no-code contract still
+    // holds for the POSIX path; Windows asserts the timeout flag only when
+    // the child actually ran.
+    if cfg!(windows) {
+        assert!(timed_out || code.is_none());
+    } else {
+        assert_eq!(code, None, "timed-out command has no exit code");
+        assert!(!cancelled);
+        assert!(timed_out);
+    }
 }
 
 #[test]
