@@ -742,3 +742,20 @@ That is the product.
 Not a desktop wrapper.
 
 A real local execution environment for an AI software engineer.
+
+
+## 23. Local-first execution and approval lifecycle
+
+The user's local system is the default sandbox. A workspace opened in Desktop executes locally unless the user explicitly selects another backend.
+
+Cloud sandboxes are OFF by default. Vercel, Boat, Modal, or future remote sandbox plugins must never silently become a fallback when local execution fails, times out, or is unavailable. Provisioning or switching to a cloud sandbox is an explicit, policy-checked action.
+
+Every task owns an execution backend: local, vercel, boat, modal, or another registered plugin. The backend is part of task state and audit history.
+
+The complete request lifecycle is:
+
+user request → create task → select backend → resolve workspace and policy → model proposes action → validate capability, target and backend → approval check → execute → stream observation → record result/audit event → update task state → continue or finish.
+
+Approval is not merely a boolean on a tool. It evaluates the capability, target, workspace, execution backend, task policy, and current lifecycle state. If the backend changes, approval is re-evaluated. Local approval never silently authorizes a cloud operation.
+
+If local execution fails, the runtime pauses or fails according to policy. It does not automatically provision a paid or remote sandbox.
