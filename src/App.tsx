@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -14,13 +14,7 @@ export function App() {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Native runtime ready");
-  const taskId = useMemo(() => {
-    const existing = localStorage.getItem("entry-desktop-task-id");
-    if (existing) return existing;
-    const id = crypto.randomUUID();
-    localStorage.setItem("entry-desktop-task-id", id);
-    return id;
-  }, []);
+  const [taskId, setTaskId] = useState(() => localStorage.getItem("entry-desktop-task-id") ?? crypto.randomUUID());
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -38,9 +32,12 @@ export function App() {
     if (!workspace.trim() || !request.trim()) return;
     setBusy(true);
     setEvents([]);
+    const nextTaskId = crypto.randomUUID();
+    localStorage.setItem("entry-desktop-task-id", nextTaskId);
+    setTaskId(nextTaskId);
     try {
       const result = await invoke<string>("run_agent", {
-        taskId,
+        taskId: nextTaskId,
         request,
         workspace,
       });
