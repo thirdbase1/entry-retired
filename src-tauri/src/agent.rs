@@ -28,6 +28,7 @@ pub async fn run(
     request: String,
     workspace: PathBuf,
     app: tauri::AppHandle,
+    reasoning_effort: Option<String>,
 ) -> Result<String, String> {
     let registry = PluginRegistry::new(workspace.clone())?;
     let runtime = registry.local_runtime.clone();
@@ -70,7 +71,10 @@ pub async fn run(
     for _ in 0..MAX_TURNS {
         let tools = tool_definitions();
         emit(&app, &task_id, "model.request", "Requesting the model…");
-        let reply = match registry.chat(&state.messages, &tools).await {
+        let reply = match registry
+            .chat(&state.messages, &tools, reasoning_effort.as_deref())
+            .await
+        {
             Ok(reply) => reply,
             Err(error) => {
                 emit(&app, &task_id, "task.error", &error);

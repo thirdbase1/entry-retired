@@ -73,6 +73,7 @@ impl AppState {
 }
 
 mod agent;
+mod model_selection;
 mod network;
 mod plugin;
 mod runtime;
@@ -85,6 +86,9 @@ struct AgentRequest {
     task_id: String,
     request: String,
     workspace: String,
+    /// Optional reasoning-effort selection ("low"/"medium"/"high"/...).
+    /// Sanitized against the model's real vocabulary before use.
+    reasoning_effort: Option<String>,
 }
 
 #[tauri::command]
@@ -342,7 +346,14 @@ async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String,
     if !workspace.is_dir() {
         return Err("Workspace must be a directory.".into());
     }
-    agent::run(input.task_id, input.request, workspace, app).await
+    agent::run(
+        input.task_id,
+        input.request,
+        workspace,
+        app,
+        input.reasoning_effort,
+    )
+    .await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

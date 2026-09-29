@@ -61,7 +61,11 @@ impl PluginRegistry {
         &self,
         messages: &[ChatMessage],
         tools: &[serde_json::Value],
+        reasoning_effort: Option<&str>,
     ) -> Result<ChatMessage, String> {
-        self.model_provider.client.chat(messages, tools).await
+        self.model_provider
+            .client
+            .chat(messages, tools, reasoning_effort)
+            .await
     }
 }

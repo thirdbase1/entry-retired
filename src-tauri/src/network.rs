@@ -42,6 +42,10 @@ struct Request<'a> {
     messages: &'a [ChatMessage],
     tools: &'a [Value],
     tool_choice: &'static str,
+    /// Flattened into the request body when reasoning effort is set
+    /// (reasoning_effort | thinking | thinkingConfig — see model_selection).
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    reasoning: Option<Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,12 +88,19 @@ impl ModelClient {
         &self,
         messages: &[ChatMessage],
         tools: &[Value],
+        reasoning_effort: Option<&str>,
     ) -> Result<ChatMessage, String> {
+        // Upstream sanitizeReasoningEffort: invalid/unrecognized values are
+        // dropped, falling back to the model's default reasoning behavior.
+        let reasoning = reasoning_effort
+            .and_then(|e| crate::model_selection::sanitize_reasoning_effort(&self.model, Some(e)))
+            .map(|e| crate::model_selection::to_reasoning_request_fields(&e, &self.model));
         let request = Request {
             model: &self.model,
             messages,
             tools,
             tool_choice: "auto",
+            reasoning,
         };
         let mut last_error = "network request failed".to_string();
 

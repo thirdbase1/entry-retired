@@ -477,3 +477,7 @@ This is deliberately not a full reproduction of the web runtime. Desktop owns th
 36. **Auth: agent never sees tokens** — web injects GithubToolContext/VercelToolContext closures; GitHub App tokens are minted scoped + revoked in finally; Vercel token set via sandbox.setVercelAuthToken, never the command line. Desktop equivalent: Tauri commands doing token brokering, tokens never in model context.
 37. **Logo**: apps/web/public/entry-logo.svg (+jpg, favicon.svg) — copied to src-tauri/icons/brand/.
 38. **Merged remote code didn't compile** (stray literal \n sequences in agent.rs, Arc<PathBuf> vs PathBuf in runtime.rs). Never trust pushed code — cargo check before building on it. And its bash tool promised approval refusal without enforcing it; wired through approval.rs.
+
+## Lesson 39 — model selection + reasoning effort (Phase 3)
+
+39. **Reasoning effort is per-model, verified by upstream live probes** (apps/web/lib/model-reasoning.ts). Ported as model_selection.rs: per-model vocabularies (e.g. qwen3.8-max-free rejects "high"; gpt-5.6-luna rejects "max" while Sol/Terra accept it; glm-5.3-flash can't disable thinking), sanitizeReasoningEffort (invalid → None → model default), and the three wire branches: Gemini → thinkingConfig.thinkingLevel, Claude → legacy thinking.budget_tokens (low 2000 / medium 8000 / high 16000 / max 32000 — adaptive/effort is a silent no-op on the gateway passthrough), everything else → reasoning_effort. The UI's picked value is sent verbatim, never remapped.
