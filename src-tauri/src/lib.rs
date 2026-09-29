@@ -20,8 +20,10 @@ fn native_status() -> String {
 
 #[tauri::command]
 fn plugin_status(workspace: String) -> Vec<(&'static str, Vec<&'static str>)> {
-    let registry = plugin::PluginRegistry::new(std::path::PathBuf::from(workspace));
-    registry.descriptors().into_iter().map(|(id, caps)| (id, caps.to_vec())).collect()
+    match plugin::PluginRegistry::new(std::path::PathBuf::from(workspace)) {
+        Ok(registry) => registry.descriptors(),
+        Err(_) => vec![],
+    }
 }
 
 #[tauri::command]
