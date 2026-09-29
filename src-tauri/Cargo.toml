@@ -19,4 +19,3 @@ serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["fs", "process", "time", "macros"] }
 dunce = "1"
-regex = "1"
