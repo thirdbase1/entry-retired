@@ -8,6 +8,22 @@ Do not turn this into a generic changelog. A changelog says **what changed**. Th
 
 ---
 
+## 2026-09-29 — Plugin-first architecture
+
+### Lesson 1: Desktop capabilities should be plugins
+
+The desktop should treat replaceable capabilities as plugins.
+
+The core should understand capabilities, lifecycle, permissions, tasks, and events—not every implementation.
+
+This lets us swap sandbox providers, model providers, terminals, storage, MCP transports, execution backends, Git integrations, indexing systems, and optional UI capabilities without rewriting the harness.
+
+The agent should request a capability such as `execute_command`, while the registry resolves the implementation.
+
+Plugin permissions also create an explicit security boundary for capabilities such as filesystem access, process spawning, networking, credentials, and Git writes.
+
+---
+
 ## 2026-09-29 — Starting point
 
 ### Lesson 1: Entry Desktop should not begin as a rewrite of Entry Web
