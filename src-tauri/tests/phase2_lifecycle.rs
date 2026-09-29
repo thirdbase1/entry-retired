@@ -160,9 +160,11 @@ fn lifecycle_timeout_kills_process() {
     let started = std::time::Instant::now();
     let rec = mgr.spawn_recorder(
         "default".into(),
-        (if cfg!(windows) { "cmd" } else { "bash" }).into(),
+        (if cfg!(windows) { "ping" } else { "bash" }).into(),
         (if cfg!(windows) {
-            vec!["/C".into(), "ping -n 31 127.0.0.1 > NUL".into()]
+            // ping directly — cmd /C would make ping a grandchild that
+            // child.kill() cannot terminate (Windows kills only cmd).
+            vec!["-n".into(), "31".into(), "127.0.0.1".into()]
         } else {
             vec!["-c".into(), "sleep 30".into()]
         }),
