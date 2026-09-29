@@ -113,21 +113,22 @@ mod tests {
 
     #[test]
     fn interior_paths_resolve() {
-        // Platform-agnostic: the expected value is whatever lexical
-        // normalization of root.join(rel) renders as on this OS.
+        // Compare as paths, not strings: Windows normalizes `/` to `\` inside
+        // joined components, so raw string equality is separator-dependent.
         let root = if cfg!(windows) {
             PathBuf::from("C:\\work\\repo")
         } else {
             PathBuf::from("/work/repo")
         };
         let root_s = root.to_string_lossy();
+        let resolve = |rel: &str| Some(PathBuf::from(resolve_workspace_path(rel, &root_s)?));
         assert_eq!(
-            resolve_workspace_path("src/index.ts", &root_s).as_deref(),
-            Some(root.join("src/index.ts").to_string_lossy().as_ref())
+            resolve("src/index.ts"),
+            Some(root.join("src").join("index.ts"))
         );
         assert_eq!(
-            resolve_workspace_path("src/./a/../b.ts", &root_s).as_deref(),
-            Some(root.join("src/b.ts").to_string_lossy().as_ref())
+            resolve("src/./a/../b.ts"),
+            Some(root.join("src").join("b.ts"))
         );
     }
 
@@ -143,12 +144,12 @@ mod tests {
         };
         let root_s = root.to_string_lossy();
         assert_eq!(
-            resolve_bash_working_directory(None, &root_s).as_deref(),
-            Some(root_s.as_ref())
+            resolve_bash_working_directory(None, &root_s).map(PathBuf::from),
+            Some(root.clone())
         );
         assert_eq!(
-            resolve_bash_working_directory(Some("apps/web"), &root_s).as_deref(),
-            Some(root.join("apps/web").to_string_lossy().as_ref())
+            resolve_bash_working_directory(Some("apps/web"), &root_s).map(PathBuf::from),
+            Some(root.join("apps").join("web"))
         );
         assert_eq!(
             resolve_bash_working_directory(Some(abs_outside.to_str().unwrap()), &root_s),
