@@ -73,6 +73,7 @@ impl AppState {
 }
 
 mod agent;
+mod integrations;
 mod model_selection;
 mod network;
 mod plugin;
@@ -331,6 +332,13 @@ fn command_approval_required(command: String) -> bool {
     approval::command_needs_approval(&command)
 }
 
+/// Integration plugin descriptors for the UI: id, name, logo, connected
+/// state, capabilities, and the browser URL used to connect.
+#[tauri::command]
+fn plugins() -> Vec<integrations::PluginDescriptor> {
+    integrations::all_plugins()
+}
+
 #[tauri::command]
 fn plugin_status(workspace: String) -> Vec<(&'static str, Vec<&'static str>)> {
     match plugin::PluginRegistry::new(std::path::PathBuf::from(workspace)) {
@@ -373,6 +381,7 @@ pub fn run() {
             process_list,
             // Agent runtime + plugins (merged from remote)
             plugin_status,
+            plugins,
             run_agent
         ])
         .run(tauri::generate_context!())
