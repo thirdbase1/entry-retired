@@ -1,10 +1,22 @@
 # Entry Desktop — Goal & Engineering Contract
 
-## Current scope — Window only
+## Current scope — Native agent runtime
 
-For the current development stage, Entry Desktop is **window-only**. The immediate focus is the native desktop window foundation: Tauri 2, React + TypeScript, Rust native core, Tauri IPC, and CI/release builds.
+The project has moved beyond the window-only foundation. The current implementation target is a **working local-first agent**.
 
-We are deliberately **not implementing the agent harness, local sandbox, cloud sandboxes, plugin runtime, terminal, MCP, approvals, or workspace execution yet**. Those remain architectural goals for later phases.
+The desktop agent must run its execution capabilities on the user's laptop by default:
+
+- local workspace and filesystem
+- local shell/process execution
+- local task state and recovery
+- native plugin registry
+- replaceable model provider plugin
+- network retry/reconnect policy
+
+Cloud sandboxes remain disabled by default and are not an implicit fallback.
+
+The current vertical slice is intentionally narrow but real: **user request → model → native tools → local process/filesystem → observations → persisted task state → final response**.
+
 
 
 > This document is the source of truth for what Entry Desktop is trying to become, why the architecture is shaped this way, and what we are deliberately **not** doing yet.
@@ -614,7 +626,7 @@ publish
 
 ### Phase 0 — Foundation
 
-Current phase.
+Completed.
 
 - Tauri shell.
 - React UI.
@@ -624,9 +636,9 @@ Current phase.
 - Release workflow.
 - Architecture documentation.
 
-### Phase 1 — Native execution
+### Phase 1 — Native agent runtime
 
-Build:
+Current phase. Build:
 
 - command execution,
 - streaming process output,
@@ -785,3 +797,17 @@ The visual direction should be:
 - designed as a serious developer tool, not a web app wrapped in a window
 
 UI quality is part of the product foundation. We should establish the visual system early rather than bolt polish onto a feature-heavy interface later.
+
+
+## 24. Current native agent contract
+
+The current Desktop runtime uses real Entry-derived behavior while keeping execution native:
+
+- Local runtime is a registered plugin and the default execution backend.
+- The model provider is a replaceable plugin using an OpenAI-compatible chat-completions boundary.
+- Agent task state is persisted under the workspace's `.entry/tasks/` directory after model/tool transitions.
+- A failed model/network request does not discard the task state; the same task can be resumed safely.
+- Model requests use a 10s connection timeout, 90s request timeout, connection keepalive, and bounded exponential retries for transient network failures.
+- Tool execution uses the laptop's own process/filesystem instead of a cloud sandbox.
+- Local dangerous/sensitive commands are refused pending the future approval UI rather than silently escalated.
+- The agent uses Entry-derived system behavior and native equivalents of the proven `bash`, `read_file`, and workspace/file mutation contracts.
