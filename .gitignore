@@ -6,3 +6,8 @@ src-tauri/target
 .env
 .env.*
 !.env.example
+desktop-backend/.next/
+desktop-backend/.vercel/
+desktop-backend/tsconfig.tsbuildinfo
+desktop-backend/node_modules/
+desktop-backend/.env.local

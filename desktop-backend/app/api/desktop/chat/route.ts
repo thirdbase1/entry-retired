@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Model gateway unavailable" }, { status: 503 });
   }
 
-  const upstream = await fetch(`${GATEWAY_BASE}/chat/completions`, {
+  const upstream = await fetch(`${GATEWAY_BASE}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
