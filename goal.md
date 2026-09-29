@@ -1,5 +1,12 @@
 # Entry Desktop — Goal & Engineering Contract
 
+## Current scope — Window only
+
+For the current development stage, Entry Desktop is **window-only**. The immediate focus is the native desktop window foundation: Tauri 2, React + TypeScript, Rust native core, Tauri IPC, and CI/release builds.
+
+We are deliberately **not implementing the agent harness, local sandbox, cloud sandboxes, plugin runtime, terminal, MCP, approvals, or workspace execution yet**. Those remain architectural goals for later phases.
+
+
 > This document is the source of truth for what Entry Desktop is trying to become, why the architecture is shaped this way, and what we are deliberately **not** doing yet.
 
 ## 1. The goal
