@@ -53,3 +53,10 @@ The core should own contracts, registration, lifecycle, permissions, task state,
 ## Compatibility
 
 Preserve useful Entry Agent behavior where practical, while replacing web-only infrastructure with native capabilities. Do not duplicate existing behavior without first understanding the upstream implementation.
+
+
+- Local execution is the default sandbox.
+- Cloud sandboxes are disabled by default and never an implicit fallback.
+- Every task has an explicit execution backend; backend changes are observable policy transitions.
+- Approval evaluates capability, target, workspace, task policy, execution backend, and lifecycle state.
+- Backend changes invalidate/re-evaluate approvals; local approval does not authorize cloud execution.
