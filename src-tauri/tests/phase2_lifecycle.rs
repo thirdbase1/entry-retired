@@ -26,7 +26,9 @@ fn register_rejects_nonexistent_root() {
     let p = tmpdir("missing");
     let path = p.join("nope").display().to_string();
     let err = Workspace::register(&path).unwrap_err();
-    assert!(err.contains("No such file"), "got: {err}");
+    assert!(err.contains("cannot register workspace"), "got: {err}");
+    // Windows: canonicalize must fail with os error 2 (not-found)
+    assert!(cfg!(windows) || err.contains("No such file"), "got: {err}");
 }
 
 #[test]
@@ -117,13 +119,14 @@ fn spawn_simple(
     // Event emission goes to a dropped channel when no app handle exists;
     // ProcessManager::spawn takes &AppHandle — for tests we use the
     // supervisor's record path via spawn_with_recorder.
-    mgr.spawn_recorder(
-        "default".into(),
-        "bash".into(),
-        vec!["-c".into(), cmd.into()],
-        cwd.into(),
-        None,
-    )
+    // Cross-platform: Git Bash exists on Windows runners but rejects
+    // 8.3-short-name temp cwds; cmd /C is the reliable Windows shell.
+    let (program, args) = if cfg!(windows) {
+        ("cmd", vec!["/C".into(), cmd.into()])
+    } else {
+        ("bash", vec!["-c".into(), cmd.into()])
+    };
+    mgr.spawn_recorder("default".into(), program.into(), args, cwd.into(), None)
 }
 
 #[test]
@@ -157,8 +160,12 @@ fn lifecycle_timeout_kills_process() {
     let started = std::time::Instant::now();
     let rec = mgr.spawn_recorder(
         "default".into(),
-        "bash".into(),
-        vec!["-c".into(), "sleep 30".into()],
+        (if cfg!(windows) { "cmd" } else { "bash" }).into(),
+        (if cfg!(windows) {
+            vec!["/C".into(), "ping -n 31 127.0.0.1 > NUL".into()]
+        } else {
+            vec!["-c".into(), "sleep 30".into()]
+        }),
         p.display().to_string(),
         Some(300),
     );
@@ -187,8 +194,12 @@ fn lifecycle_cancel_prevents_completion_report() {
     });
     let rec = mgr.spawn_recorder(
         "cancel-me".into(),
-        "bash".into(),
-        vec!["-c".into(), "sleep 10".into()],
+        (if cfg!(windows) { "cmd" } else { "bash" }).into(),
+        (if cfg!(windows) {
+            vec!["/C".into(), "ping -n 11 127.0.0.1 > NUL".into()]
+        } else {
+            vec!["-c".into(), "sleep 10".into()]
+        }),
         cwd,
         None,
     );
