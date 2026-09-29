@@ -447,3 +447,16 @@ executor's `run` takes `Option<u64>` and kills the child on expiry, returning
 `exitCode: null` plus `Command timed out after <n>ms` on stderr. Putting the
 deadline in the wait loop (not a separate timer thread) keeps cancellation and
 timeout on one code path.
+
+## Lessons 24-33 — Phase 2: workspace as capability + process manager
+
+24. **Lexical resolution is not containment.** A workspace-relative path that resolves inside the root can still be a symlink pointing outside. `gate_read` canonicalizes (follows links) and re-checks `is_path_within_directory` on the canonical result. A test with a real symlink caught this.
+25. **Registered state must be re-verified at every gate entry.** The root can vanish (unmount, rm -rf) between registration and use. Both gates call `verify()` first; the test deletes the root mid-flight and asserts refusal.
+26. **Split the process supervisor from event emission.** `spawn_recorder` runs the full lifecycle with no `AppHandle`; `spawn` wraps it with `process:*` events. Lifecycle is testable without a running Tauri app.
+27. **Process output is both streamed and captured.** The supervisor drains the reader channel while polling and accumulates stdout/stderr into the final `ProcessRecord`.
+28. **`State<'_, AppState>` cannot cross into `spawn_blocking`** — clone the Arc-backed manager before the `move` closure.
+29. **Pipe types must be unified** (`Box<dyn Read + Send>`) when iterating stdout/stderr pairs (Lesson 14 recurring).
+30. **Task → process association is the cleanup primitive**: `handles_for_task` + `cancel_task` = "kill everything a task owns".
+31. **Real timeout tests must assert wall-clock**, not just reported state: `sleep 30` @ 300ms timeout must return <10s.
+32. **Deny-by-default writes**: `gate_write` refuses everything in Phase 2; the policy hook exists for Phase 3+.
+33. **Test argument-order bugs mimic real ones.** Two "failures" were the test calling `is_path_within_directory(dir, file)`; a probe example confirmed the function before touching it.

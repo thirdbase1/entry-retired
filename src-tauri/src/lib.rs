@@ -1,59 +1,74 @@
 //! Entry Desktop native core.
 //!
-//! Boundaries ported from entry-agents so the desktop behaves like the
-//! proven web implementation where behavior matters (path containment,
-//! approval heuristics, content boundaries, read ceilings) while replacing
-//! web/cloud-sandbox-only infrastructure with native capabilities.
+//! Phase 2 runtime shape:
+//!
+//! ```text
+//! Entry Agent → Command Contract → Native Runtime
+//!                                   ├── Workspace (registration, boundary, policy)
+//!                                   ├── Process Manager (lifecycle, ownership)
+//!                                   └── Filesystem (gated, confined)
+//! ```
+//!
+//! Tool contracts are ported from entry-agents (path_security, approval,
+//! content_boundary, read_ceilings). The agent never receives an arbitrary
+//! filesystem path; everything routes through the registered workspace.
 
-// Public for integration tests and the future plugin surface; internal
-// modules stay `pub(crate)`-capable as the plugin registry lands.
 pub mod approval;
-pub mod content_boundary;
-mod executor;
+mod content_boundary;
 pub mod path_security;
+pub mod process_manager;
 pub mod read_ceilings;
+pub mod workspace;
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use content_boundary::wrap_external_file_content;
-use executor::{detect_workspace, make_spec, Executor, RunResult, WorkspaceInfo};
-use path_security::{is_dotenv_file_path, resolve_bash_working_directory, resolve_workspace_path};
+use process_manager::{ProcessEnd, ProcessManager, ProcessRecord};
 use read_ceilings::{
     apply_byte_ceiling, clamp_line, is_device_path, is_likely_binary, normalize_file_content,
     select_lines, split_lines, SelectParams, READ_BYTE_CEILING,
 };
+use workspace::{Workspace, WorkspaceStatus};
+pub use workspace::{WorkspaceMetadata, WorkspacePolicy};
+
 use tauri::State;
 
-/// Upstream bash tool: combined output is truncated after ~50,000 characters.
+/// Upstream bash tool: combined output truncated after ~50,000 characters.
 const BASH_OUTPUT_CEILING: usize = 50_000;
 /// Upstream bash tool default timeout.
 const BASH_DEFAULT_TIMEOUT_MS: u64 = 120_000;
 
 pub struct AppState {
-    executor: Executor,
-    cancel_flags: Mutex<HashMap<u64, Arc<AtomicBool>>>,
-    /// The workspace root for this desktop session. Every path-bearing tool
-    /// resolves against it (never against ambient process cwd).
-    workspace: Mutex<String>,
+    /// Registered workspace. `None` until set_workspace succeeds — no
+    /// execution ground, no tool runs.
+    workspace: Mutex<Option<Workspace>>,
+    processes: ProcessManager,
 }
 
 impl AppState {
     fn new() -> Self {
-        let cwd = std::env::current_dir()
-            .map(|p| p.display().to_string())
-            .unwrap_or_else(|_| ".".to_string());
         Self {
-            executor: Executor::default(),
-            cancel_flags: Mutex::new(HashMap::new()),
-            workspace: Mutex::new(cwd),
+            workspace: Mutex::new(None),
+            processes: ProcessManager::new(),
         }
     }
 
-    fn workspace_root(&self) -> String {
-        self.workspace.lock().unwrap().clone()
+    /// Fetch and re-verify the registered workspace. The root can vanish
+    /// (unmount, rm -rf) after registration; every entry point re-checks.
+    fn workspace(&self) -> Result<Workspace, String> {
+        let guard = self.workspace.lock().unwrap();
+        match guard.as_ref() {
+            Some(ws) => match ws.verify() {
+                WorkspaceStatus::Ready => Ok(ws.clone()),
+                WorkspaceStatus::Missing { registered_root } => Err(format!(
+                    "workspace no longer exists on disk: {registered_root}"
+                )),
+                WorkspaceStatus::Invalid { registered_root } => Err(format!(
+                    "workspace root is no longer a directory: {registered_root}"
+                )),
+            },
+            None => Err("no workspace registered; call set_workspace first".to_string()),
+        }
     }
 }
 
@@ -62,18 +77,45 @@ fn native_status() -> String {
     "Rust native core online".to_owned()
 }
 
-/// Set (or read back) the workspace root. The UI picks a folder; Rust owns it.
+/// Register (or re-register) the workspace root. Rust canonicalizes the path
+/// and owns the result; the UI only passes a user-chosen folder.
 #[tauri::command]
-fn set_workspace(state: State<AppState>, path: Option<String>) -> Result<String, String> {
-    let mut ws = state.workspace.lock().unwrap();
-    if let Some(p) = path {
-        let canonical = std::fs::canonicalize(&p).map_err(|e| format!("invalid workspace: {e}"))?;
-        if !canonical.is_dir() {
-            return Err("workspace must be a directory".to_string());
-        }
-        *ws = canonical.display().to_string();
+fn set_workspace(state: State<AppState>, path: String) -> Result<WorkspaceMetadata, String> {
+    let ws = Workspace::register(&path)?;
+    let meta = ws.metadata();
+    *state.workspace.lock().unwrap() = Some(ws);
+    Ok(meta)
+}
+
+/// Workspace observation surface: root, status, metadata, policy.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceSnapshot {
+    root: Option<String>,
+    status: WorkspaceStatus,
+    metadata: Option<WorkspaceMetadata>,
+    policy: WorkspacePolicy,
+}
+
+#[tauri::command]
+fn workspace_info(state: State<AppState>) -> WorkspaceSnapshot {
+    let guard = state.workspace.lock().unwrap();
+    match guard.as_ref() {
+        Some(ws) => WorkspaceSnapshot {
+            status: ws.verify(),
+            root: Some(ws.root_display()),
+            metadata: Some(ws.metadata()),
+            policy: ws.policy().clone(),
+        },
+        None => WorkspaceSnapshot {
+            root: None,
+            status: WorkspaceStatus::Missing {
+                registered_root: String::new(),
+            },
+            metadata: None,
+            policy: WorkspacePolicy::default(),
+        },
     }
-    Ok(ws.clone())
 }
 
 #[derive(serde::Serialize)]
@@ -86,70 +128,8 @@ struct BashResult {
     truncated: bool,
     cancelled: bool,
     duration_ms: u64,
-}
-
-/// Upstream-compatible bash command.
-///
-/// Deliberate, observable contract points:
-/// - `cwd` accepts ONLY a workspace-relative path (absolute is refused).
-/// - Commands run via a non-interactive `bash -c`, matching upstream.
-/// - Output is ceilinged at 50,000 chars with a `truncated` flag.
-/// - Dangerous commands are refused by the runtime (approval gate).
-#[tauri::command(async)]
-async fn bash(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-    command: String,
-    cwd: Option<String>,
-) -> Result<BashResult, String> {
-    let workspace = state.workspace_root();
-
-    let working_dir = resolve_bash_working_directory(cwd.as_deref(), &workspace).ok_or_else(
-        || {
-            "Invalid cwd: the bash working directory must be a workspace-relative path inside the workspace."
-                .to_string()
-        },
-    )?;
-
-    if approval::command_needs_approval(&command) {
-        // Approval policy is enforced by the runtime, not the caller. Until an
-        // approval channel exists, destructive commands are refused outright
-        // rather than silently executed (goal.md §13).
-        return Err(format!(
-            "approval_required: `{command}` matches a dangerous command pattern"
-        ));
-    }
-
-    let spec = make_spec(
-        "bash".to_string(),
-        vec!["-c".to_string(), command.clone()],
-        Some(working_dir),
-    );
-    let flag = Arc::new(AtomicBool::new(false));
-    state.cancel_flags.lock().unwrap().insert(0, flag.clone());
-
-    let executor = state.executor.clone();
-    let app_for_task = app.clone();
-    let result: RunResult = tauri::async_runtime::spawn_blocking(move || {
-        executor.run(&app_for_task, spec, flag, Some(BASH_DEFAULT_TIMEOUT_MS))
-    })
-    .await
-    .map_err(|e| format!("executor task failed: {e}"))?;
-
-    state.cancel_flags.lock().unwrap().remove(&0);
-
-    let (stdout, out_truncated) = truncate_output(&result.stdout);
-    let (stderr, err_truncated) = truncate_output(&result.stderr);
-
-    Ok(BashResult {
-        success: result.exit_code == Some(0),
-        exit_code: result.exit_code,
-        stdout,
-        stderr,
-        truncated: out_truncated || err_truncated,
-        cancelled: result.cancelled,
-        duration_ms: result.duration_ms,
-    })
+    /// Process-manager handle for observation/cancellation.
+    process_handle: u64,
 }
 
 fn truncate_output(text: &str) -> (String, bool) {
@@ -161,6 +141,95 @@ fn truncate_output(text: &str) -> (String, bool) {
         format!("{cut}\n… [output truncated at {BASH_OUTPUT_CEILING} characters]"),
         true,
     )
+}
+
+/// Upstream-compatible bash command, running through the workspace gate and
+/// the process manager. `cwd` must be workspace-relative. `task_id` associates
+/// the spawned process with an agent task for lifecycle cleanup.
+#[tauri::command(async)]
+async fn bash(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    command: String,
+    cwd: Option<String>,
+    task_id: Option<String>,
+) -> Result<BashResult, String> {
+    let ws = state.workspace()?;
+
+    if approval::command_needs_approval(&command) {
+        // Runtime-enforced approval (goal.md §13): refusal, not a UI question.
+        return Err(format!(
+            "approval_required: `{command}` matches a dangerous command pattern"
+        ));
+    }
+
+    let working_dir = ws.gate_execute(cwd.as_deref())?;
+    let task_id = task_id.unwrap_or_else(|| "default".to_string());
+
+    // ProcessManager is an Arc-backed registry: cheap to clone into the task.
+    let processes = state.processes.clone();
+    let rec: ProcessRecord = tauri::async_runtime::spawn_blocking(move || {
+        processes.spawn(
+            &app,
+            task_id,
+            "bash".to_string(),
+            vec!["-c".to_string(), command],
+            working_dir.display().to_string(),
+            Some(BASH_DEFAULT_TIMEOUT_MS),
+        )
+    })
+    .await
+    .map_err(|e| format!("process supervisor failed: {e}"))?;
+
+    let end = rec
+        .end
+        .clone()
+        .ok_or("process ended without a terminal state")?;
+    let (exit_code, cancelled) = match end {
+        ProcessEnd::Exited { code } => (code, false),
+        ProcessEnd::Cancelled => (None, true),
+        ProcessEnd::TimedOut { after_ms } => {
+            return Err(format!("command timed out after {after_ms}ms"));
+        }
+        ProcessEnd::SpawnFailed { reason } => return Err(reason),
+    };
+
+    let (stdout, out_trunc) = truncate_output(&rec.stdout);
+    let (stderr, err_trunc) = truncate_output(&rec.stderr);
+
+    Ok(BashResult {
+        success: exit_code == Some(0),
+        exit_code,
+        stdout,
+        stderr,
+        truncated: out_trunc || err_trunc,
+        cancelled,
+        duration_ms: rec.duration_ms,
+        process_handle: rec.handle,
+    })
+}
+
+/// Cancel a live process by handle.
+#[tauri::command]
+fn cancel_process(state: State<AppState>, handle: u64) -> bool {
+    state.processes.cancel(handle)
+}
+
+/// All process records (task → process association surface).
+#[tauri::command]
+fn process_list(state: State<AppState>) -> Vec<ProcessRecord> {
+    state.processes.all_records()
+}
+
+/// Request cancellation of every process owned by a task (cleanup when the
+/// task dies). Returns the handles that were signalled.
+#[tauri::command]
+fn cancel_task(state: State<AppState>, task_id: String) -> Vec<u64> {
+    let handles = state.processes.handles_for_task(&task_id);
+    for h in &handles {
+        state.processes.cancel(*h);
+    }
+    handles
 }
 
 #[derive(serde::Serialize)]
@@ -175,8 +244,8 @@ struct ReadResult {
     next_offset: Option<usize>,
 }
 
-/// Read a workspace file with upstream's three ceilings and untrusted-content
-/// boundary. Refuses device paths, workspace escapes, and binary content.
+/// Read a workspace file through the workspace read gate, the three ceilings,
+/// and the untrusted-content boundary.
 #[tauri::command]
 fn read_file(
     state: State<AppState>,
@@ -184,20 +253,13 @@ fn read_file(
     offset: Option<i64>,
     limit: Option<usize>,
 ) -> Result<ReadResult, String> {
-    let workspace = state.workspace_root();
+    let ws = state.workspace()?;
 
     if is_device_path(&path) {
         return Err(format!("refusing to read device path: {path}"));
     }
 
-    let absolute = resolve_workspace_path(&path, &workspace)
-        .ok_or_else(|| format!("path escapes the workspace: {path}"))?;
-
-    if is_dotenv_file_path(&path) {
-        return Err(format!(
-            "approval_required: `{path}` is a credential-bearing dotenv file"
-        ));
-    }
+    let absolute = ws.gate_read(&path)?;
 
     let raw =
         std::fs::read_to_string(&absolute).map_err(|e| format!("failed to read {path}: {e}"))?;
@@ -244,31 +306,10 @@ fn read_file(
     })
 }
 
-/// Whether a command would require approval. Lets the UI warn before running.
+/// Whether a command would require approval (UI pre-warning surface).
 #[tauri::command]
 fn command_approval_required(command: String) -> bool {
     approval::command_needs_approval(&command)
-}
-
-/// Workspace detection: git state plus project markers.
-#[tauri::command]
-fn workspace_info(state: State<AppState>, path: Option<String>) -> WorkspaceInfo {
-    let root = match path {
-        Some(p) => PathBuf::from(p),
-        None => PathBuf::from(state.workspace_root()),
-    };
-    detect_workspace(&root)
-}
-
-/// Cancel the in-flight command.
-#[tauri::command]
-fn cancel_process(state: State<AppState>) -> bool {
-    if let Some(flag) = state.cancel_flags.lock().unwrap().get(&0) {
-        flag.store(true, Ordering::SeqCst);
-        true
-    } else {
-        false
-    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -278,11 +319,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             native_status,
             set_workspace,
+            workspace_info,
             bash,
             read_file,
             command_approval_required,
-            workspace_info,
-            cancel_process
+            cancel_process,
+            cancel_task,
+            process_list
         ])
         .run(tauri::generate_context!())
         .expect("error while running Entry Desktop");
