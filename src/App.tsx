@@ -1,50 +1,109 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+
+type AgentEvent = {
+  task_id: string;
+  kind: string;
+  message: string;
+};
 
 export function App() {
-  const [status, setStatus] = useState("Native core ready");
+  const [workspace, setWorkspace] = useState("");
+  const [request, setRequest] = useState("");
+  const [events, setEvents] = useState<AgentEvent[]>([]);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("Native runtime ready");
+  const taskId = useMemo(() => {
+    const existing = localStorage.getItem("entry-desktop-task-id");
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    localStorage.setItem("entry-desktop-task-id", id);
+    return id;
+  }, []);
+
+  useEffect(() => {
+    let dispose: (() => void) | undefined;
+    listen<AgentEvent>("entry://agent-event", (event) => {
+      setEvents((current) => [...current, event.payload]);
+      setStatus(event.payload.kind);
+      if (event.payload.kind === "task.completed" || event.payload.kind === "task.error") {
+        setBusy(false);
+      }
+    }).then((unlisten) => { dispose = unlisten; });
+    return () => dispose?.();
+  }, []);
+
+  async function runAgent() {
+    if (!workspace.trim() || !request.trim()) return;
+    setBusy(true);
+    setEvents([]);
+    try {
+      const result = await invoke<string>("run_agent", {
+        taskId,
+        request,
+        workspace,
+      });
+      setStatus(result);
+    } catch (error) {
+      setStatus(String(error));
+      setBusy(false);
+    }
+  }
 
   async function checkNativeCore() {
-    setBusy(true);
     try {
-      const value = await invoke<string>("native_status");
-      setStatus(value);
+      setStatus(await invoke<string>("native_status"));
     } catch {
       setStatus("Native command unavailable");
-    } finally {
-      setBusy(false);
     }
   }
 
   return (
     <main className="shell">
-      <section className="hero">
-        <span className="eyebrow">ENTRY DESKTOP / 0.1</span>
-        <h1>Agent runtime, on your machine.</h1>
-        <p>
-          A native foundation for Entry: local workspaces, processes, terminals,
-          MCP, approvals, and eventually the full agent harness.
-        </p>
-        <button onClick={checkNativeCore} disabled={busy}>
-          {busy ? "Checking…" : "Check native core"}
-        </button>
-        <div className="status">{status}</div>
+      <header className="topbar">
+        <span className="brand">ENTRY</span>
+        <span className="runtime">LOCAL RUNTIME · {busy ? "RUNNING" : "READY"}</span>
+      </header>
+
+      <section className="workspace-panel">
+        <div className="eyebrow">NATIVE AGENT</div>
+        <h1>Build on your machine.</h1>
+        <p>Entry now runs its tools, files, processes, and task state locally. The model remains a replaceable network plugin.</p>
+
+        <label>
+          Workspace
+          <input value={workspace} onChange={(e) => setWorkspace(e.target.value)} placeholder="C:\path\to\repo" />
+        </label>
+
+        <label>
+          Task
+          <textarea value={request} onChange={(e) => setRequest(e.target.value)} placeholder="Ask Entry to inspect, change, and verify this repository…" rows={5} />
+        </label>
+
+        <div className="actions">
+          <button onClick={runAgent} disabled={busy || !workspace.trim() || !request.trim()}>
+            {busy ? "Agent running…" : "Run agent"}
+          </button>
+          <button className="secondary" onClick={checkNativeCore}>Check runtime</button>
+        </div>
       </section>
 
-      <section className="grid">
-        <article>
-          <strong>Rust core</strong>
-          <span>Native process and OS boundary.</span>
-        </article>
-        <article>
-          <strong>Local workspace</strong>
-          <span>Designed for direct filesystem and git access.</span>
-        </article>
-        <article>
-          <strong>Agent harness</strong>
-          <span>Plan → tools → observe → verify → respond.</span>
-        </article>
+      <section className="activity">
+        <div className="activity-head">
+          <span>Execution</span>
+          <span>{status}</span>
+        </div>
+        {events.length === 0 ? (
+          <div className="empty">No task activity yet.</div>
+        ) : (
+          events.map((event, index) => (
+            <article key={index}>
+              <span className="event-kind">{event.kind}</span>
+              <p>{event.message}</p>
+            </article>
+          ))
+        )}
       </section>
     </main>
   );
