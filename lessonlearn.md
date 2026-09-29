@@ -481,3 +481,7 @@ This is deliberately not a full reproduction of the web runtime. Desktop owns th
 ## Lesson 39 — model selection + reasoning effort (Phase 3)
 
 39. **Reasoning effort is per-model, verified by upstream live probes** (apps/web/lib/model-reasoning.ts). Ported as model_selection.rs: per-model vocabularies (e.g. qwen3.8-max-free rejects "high"; gpt-5.6-luna rejects "max" while Sol/Terra accept it; glm-5.3-flash can't disable thinking), sanitizeReasoningEffort (invalid → None → model default), and the three wire branches: Gemini → thinkingConfig.thinkingLevel, Claude → legacy thinking.budget_tokens (low 2000 / medium 8000 / high 16000 / max 32000 — adaptive/effort is a silent no-op on the gateway passthrough), everything else → reasoning_effort. The UI's picked value is sent verbatim, never remapped.
+
+## Lesson 40 — Vercel backend for desktop (secure-key proxy)
+
+40. **Desktop cloud contract**: the client never holds secrets — only a Better Auth Bearer token. All third-party keys live in Vercel env vars; /api/desktop/* routes proxy the calls, strip sensitive response headers, enforce plan/credit gates server-side (mirroring upstream's resolveChatModelRuntime + debitUsage path), and reject browsers via origin allowlist (tauri://localhost) + required x-entry-desktop header. Rate limits per user/bucket via Upstash. Upstream billing truth: users row (plan, creditBalanceCents, planGrantBalanceCents) + credit_transactions ledger; /api/billing/me + /api/models are the templates the desktop routes mirror.
