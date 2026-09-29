@@ -58,10 +58,13 @@ impl ModelClient {
     pub fn from_env() -> Result<Self, String> {
         let base_url = std::env::var("ENTRY_MODEL_BASE_URL")
             .map_err(|_| "ENTRY_MODEL_BASE_URL is not configured.".to_string())?
-            .trim_end_matches('/').to_string();
+            .trim_end_matches('/')
+            .to_string();
         let model = std::env::var("ENTRY_MODEL_ID")
             .map_err(|_| "ENTRY_MODEL_ID is not configured.".to_string())?;
-        let api_key = std::env::var("ENTRY_MODEL_API_KEY").ok().filter(|v| !v.is_empty());
+        let api_key = std::env::var("ENTRY_MODEL_API_KEY")
+            .ok()
+            .filter(|v| !v.is_empty());
         let client = Client::builder()
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(90))
@@ -69,15 +72,32 @@ impl ModelClient {
             .tcp_keepalive(Duration::from_secs(30))
             .build()
             .map_err(|e| e.to_string())?;
-        Ok(Self { client, base_url, api_key, model })
+        Ok(Self {
+            client,
+            base_url,
+            api_key,
+            model,
+        })
     }
 
-    pub async fn chat(&self, messages: &[ChatMessage], tools: &[Value]) -> Result<ChatMessage, String> {
-        let request = Request { model: &self.model, messages, tools, tool_choice: "auto" };
+    pub async fn chat(
+        &self,
+        messages: &[ChatMessage],
+        tools: &[Value],
+    ) -> Result<ChatMessage, String> {
+        let request = Request {
+            model: &self.model,
+            messages,
+            tools,
+            tool_choice: "auto",
+        };
         let mut last_error = "network request failed".to_string();
 
         for attempt in 0..4 {
-            let mut builder = self.client.post(format!("{}/chat/completions", self.base_url)).json(&request);
+            let mut builder = self
+                .client
+                .post(format!("{}/chat/completions", self.base_url))
+                .json(&request);
             if let Some(key) = &self.api_key {
                 builder = builder.bearer_auth(key);
             }
@@ -86,13 +106,19 @@ impl ModelClient {
                 Ok(response) => {
                     if response.status().is_success() {
                         let body: Response = response.json().await.map_err(|e| e.to_string())?;
-                        return body.choices.into_iter().next().map(|c| c.message)
+                        return body
+                            .choices
+                            .into_iter()
+                            .next()
+                            .map(|c| c.message)
                             .ok_or_else(|| "Model returned no choices.".to_string());
                     }
                     let status = response.status();
                     let body = response.text().await.unwrap_or_default();
                     last_error = format!("model HTTP {}: {}", status, truncate_error(&body));
-                    if !retryable(status) { break; }
+                    if !retryable(status) {
+                        break;
+                    }
                 }
                 Err(error) => {
                     last_error = error.to_string();
@@ -105,12 +131,18 @@ impl ModelClient {
             }
         }
 
-        Err(format!("MODEL_NETWORK_ERROR: {}. The task state is preserved; retry/resume is safe.", last_error))
+        Err(format!(
+            "MODEL_NETWORK_ERROR: {}. The task state is preserved; retry/resume is safe.",
+            last_error
+        ))
     }
 }
 
 fn retryable(status: StatusCode) -> bool {
-    matches!(status.as_u16(), 408 | 409 | 425 | 429 | 500 | 502 | 503 | 504)
+    matches!(
+        status.as_u16(),
+        408 | 409 | 425 | 429 | 500 | 502 | 503 | 504
+    )
 }
 
 fn truncate_error(body: &str) -> String {

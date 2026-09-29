@@ -337,8 +337,8 @@ fn plugin_status(workspace: String) -> Vec<(&'static str, Vec<&'static str>)> {
 
 #[tauri::command]
 async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String, String> {
-    let workspace = dunce::canonicalize(&input.workspace)
-        .map_err(|e| format!("Invalid workspace: {e}"))?;
+    let workspace =
+        dunce::canonicalize(&input.workspace).map_err(|e| format!("Invalid workspace: {e}"))?;
     if !workspace.is_dir() {
         return Err("Workspace must be a directory.".into());
     }

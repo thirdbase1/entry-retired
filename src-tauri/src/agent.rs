@@ -1,4 +1,8 @@
-use crate::{network::{ChatMessage, FunctionCall}, plugin::PluginRegistry, runtime::LocalRuntimePlugin};
+use crate::{
+    network::{ChatMessage, FunctionCall},
+    plugin::PluginRegistry,
+    runtime::LocalRuntimePlugin,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{path::PathBuf, sync::Arc};
@@ -30,28 +34,38 @@ pub async fn run(
     let state_path = task_path(&workspace, &task_id)?;
 
     let mut state = if state_path.exists() {
-        let raw = tokio::fs::read_to_string(&state_path).await.map_err(|e| e.to_string())?;
+        let raw = tokio::fs::read_to_string(&state_path)
+            .await
+            .map_err(|e| e.to_string())?;
         serde_json::from_str::<PersistedTask>(&raw).map_err(|e| e.to_string())?
     } else {
         PersistedTask {
             task_id: task_id.clone(),
             workspace: workspace.display().to_string(),
-            messages: vec![ChatMessage {
-                role: "system".into(),
-                content: Some(system_prompt().into()),
-                tool_calls: None,
-                tool_call_id: None,
-            }, ChatMessage {
-                role: "user".into(),
-                content: Some(request),
-                tool_calls: None,
-                tool_call_id: None,
-            }],
+            messages: vec![
+                ChatMessage {
+                    role: "system".into(),
+                    content: Some(system_prompt().into()),
+                    tool_calls: None,
+                    tool_call_id: None,
+                },
+                ChatMessage {
+                    role: "user".into(),
+                    content: Some(request),
+                    tool_calls: None,
+                    tool_call_id: None,
+                },
+            ],
         }
     };
 
     persist(&state_path, &state).await?;
-    emit(&app, &task_id, "task.started", "Agent task started on the local machine.");
+    emit(
+        &app,
+        &task_id,
+        "task.started",
+        "Agent task started on the local machine.",
+    );
 
     for _ in 0..MAX_TURNS {
         let tools = tool_definitions();
@@ -68,13 +82,23 @@ pub async fn run(
 
         if let Some(calls) = reply.tool_calls.clone() {
             for call in calls {
-                emit(&app, &task_id, "tool.started", &format!("Running {}", call.function.name));
+                emit(
+                    &app,
+                    &task_id,
+                    "tool.started",
+                    &format!("Running {}", call.function.name),
+                );
                 let result = execute_tool(runtime.clone(), &call.function).await;
                 let text = match result {
                     Ok(value) => value,
                     Err(error) => error,
                 };
-                emit(&app, &task_id, "tool.finished", &format!("{}\n{}", call.function.name, preview(&text)));
+                emit(
+                    &app,
+                    &task_id,
+                    "tool.finished",
+                    &format!("{}\n{}", call.function.name, preview(&text)),
+                );
                 state.messages.push(ChatMessage {
                     role: "tool".into(),
                     content: Some(text),
@@ -94,33 +118,66 @@ pub async fn run(
     Err("Agent stopped after the 40-turn safety limit. Task state is preserved for resume.".into())
 }
 
-async fn execute_tool(runtime: Arc<LocalRuntimePlugin>, call: &FunctionCall) -> Result<String, String> {
-    let args: Value = serde_json::from_str(&call.arguments).map_err(|e| format!("Invalid tool arguments: {e}"))?;
+async fn execute_tool(
+    runtime: Arc<LocalRuntimePlugin>,
+    call: &FunctionCall,
+) -> Result<String, String> {
+    let args: Value = serde_json::from_str(&call.arguments)
+        .map_err(|e| format!("Invalid tool arguments: {e}"))?;
     match call.name.as_str() {
         "workspace_info" => Ok(json!({
             "workspace": runtime.workspace(),
             "capabilities": runtime.capabilities()
-        }).to_string()),
+        })
+        .to_string()),
         "read_file" => {
-            let path = args.get("path").and_then(Value::as_str).ok_or("path is required")?;
+            let path = args
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or("path is required")?;
             let offset = args.get("offset").and_then(Value::as_i64).unwrap_or(1);
             let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(2000) as usize;
             runtime.read_file(path, offset, limit).await
         }
         "write_file" => {
-            let path = args.get("path").and_then(Value::as_str).ok_or("path is required")?;
-            let content = args.get("content").and_then(Value::as_str).ok_or("content is required")?;
+            let path = args
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or("path is required")?;
+            let content = args
+                .get("content")
+                .and_then(Value::as_str)
+                .ok_or("content is required")?;
             runtime.write_file(path, content).await
         }
         "edit_file" => {
-            let path = args.get("path").and_then(Value::as_str).ok_or("path is required")?;
-            let old = args.get("old").and_then(Value::as_str).ok_or("old is required")?;
-            let new = args.get("new").and_then(Value::as_str).ok_or("new is required")?;
+            let path = args
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or("path is required")?;
+            let old = args
+                .get("old")
+                .and_then(Value::as_str)
+                .ok_or("old is required")?;
+            let new = args
+                .get("new")
+                .and_then(Value::as_str)
+                .ok_or("new is required")?;
             runtime.edit_file(path, old, new).await
         }
         "bash" => {
-            let command = args.get("command").and_then(Value::as_str).ok_or("command is required")?;
+            let command = args
+                .get("command")
+                .and_then(Value::as_str)
+                .ok_or("command is required")?;
             let cwd = args.get("cwd").and_then(Value::as_str);
+            // Upstream contract: dangerous commands are refused pending
+            // approval (approval.rs pattern lists, ported from entry-agents).
+            if crate::approval::command_needs_approval(command) {
+                return Err(format!(
+                    "approval_required: `{command}` matches a dangerous command pattern; explain the required approval and stop"
+                ));
+            }
             let result = runtime.bash(command, cwd).await?;
             serde_json::to_string(&result).map_err(|e| e.to_string())
         }
@@ -144,20 +201,29 @@ fn system_prompt() -> &'static str {
 
 fn task_path(workspace: &PathBuf, task_id: &str) -> Result<PathBuf, String> {
     let dir = workspace.join(".entry").join("tasks");
-    if !dir.starts_with(workspace) { return Err("Invalid task path.".into()); }
+    if !dir.starts_with(workspace) {
+        return Err("Invalid task path.".into());
+    }
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir.join(format!("{}.json", sanitize_id(task_id))))
 }
 
 fn sanitize_id(value: &str) -> String {
-    value.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_').collect()
+    value
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect()
 }
 
 async fn persist(path: &PathBuf, state: &PersistedTask) -> Result<(), String> {
     let tmp = path.with_extension("json.tmp");
     let data = serde_json::to_vec_pretty(state).map_err(|e| e.to_string())?;
-    tokio::fs::write(&tmp, data).await.map_err(|e| e.to_string())?;
-    tokio::fs::rename(&tmp, path).await.map_err(|e| e.to_string())
+    tokio::fs::write(&tmp, data)
+        .await
+        .map_err(|e| e.to_string())?;
+    tokio::fs::rename(&tmp, path)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 fn preview(value: &str) -> String {
@@ -166,9 +232,12 @@ fn preview(value: &str) -> String {
 
 fn emit(app: &tauri::AppHandle, task_id: &str, kind: &str, message: &str) {
     use tauri::Emitter;
-    let _ = app.emit("entry://agent-event", AgentEvent {
-        task_id: task_id.to_string(),
-        kind: kind.to_string(),
-        message: message.to_string(),
-    });
+    let _ = app.emit(
+        "entry://agent-event",
+        AgentEvent {
+            task_id: task_id.to_string(),
+            kind: kind.to_string(),
+            message: message.to_string(),
+        },
+    );
 }

@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::{network::{ChatMessage, ModelClient}, runtime::LocalRuntimePlugin};
+use crate::{
+    network::{ChatMessage, ModelClient},
+    runtime::LocalRuntimePlugin,
+};
 
 pub trait Plugin: Send + Sync {
     fn id(&self) -> &'static str;
@@ -13,12 +16,16 @@ pub struct ModelProviderPlugin {
 
 impl ModelProviderPlugin {
     pub fn from_env() -> Result<Self, String> {
-        Ok(Self { client: ModelClient::from_env()? })
+        Ok(Self {
+            client: ModelClient::from_env()?,
+        })
     }
 }
 
 impl Plugin for ModelProviderPlugin {
-    fn id(&self) -> &'static str { "model.openai-compatible" }
+    fn id(&self) -> &'static str {
+        "model.openai-compatible"
+    }
     fn capabilities(&self) -> &'static [&'static str] {
         &["model.chat", "network.connect", "network.reconnect"]
     }
@@ -39,12 +46,22 @@ impl PluginRegistry {
 
     pub fn descriptors(&self) -> Vec<(&'static str, Vec<&'static str>)> {
         vec![
-            (self.local_runtime.id(), self.local_runtime.capabilities().to_vec()),
-            (self.model_provider.id(), self.model_provider.capabilities().to_vec()),
+            (
+                self.local_runtime.id(),
+                self.local_runtime.capabilities().to_vec(),
+            ),
+            (
+                self.model_provider.id(),
+                self.model_provider.capabilities().to_vec(),
+            ),
         ]
     }
 
-    pub async fn chat(&self, messages: &[ChatMessage], tools: &[serde_json::Value]) -> Result<ChatMessage, String> {
+    pub async fn chat(
+        &self,
+        messages: &[ChatMessage],
+        tools: &[serde_json::Value],
+    ) -> Result<ChatMessage, String> {
         self.model_provider.client.chat(messages, tools).await
     }
 }
