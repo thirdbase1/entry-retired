@@ -766,3 +766,22 @@ user request → create task → select backend → resolve workspace and policy
 Approval is not merely a boolean on a tool. It evaluates the capability, target, workspace, execution backend, task policy, and current lifecycle state. If the backend changes, approval is re-evaluated. Local approval never silently authorizes a cloud operation.
 
 If local execution fails, the runtime pauses or fails according to policy. It does not automatically provision a paid or remote sandbox.
+
+## UI quality bar
+
+Entry Desktop must have a deliberate, premium UI from the beginning. The window-only phase is not permission to ship a generic Tauri starter interface.
+
+The visual direction should be:
+
+- minimal, premium, and sharp
+- dark-first
+- strong Entry visual identity
+- intentional typography and spacing
+- clear hierarchy
+- subtle, purposeful motion
+- polished states and transitions
+- no generic dashboard/template aesthetic
+- no unnecessary UI chrome
+- designed as a serious developer tool, not a web app wrapped in a window
+
+UI quality is part of the product foundation. We should establish the visual system early rather than bolt polish onto a feature-heavy interface later.
