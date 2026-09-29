@@ -362,3 +362,28 @@ article span {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- Merged from native-agent UI (topbar, activity feed) ---- */
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at 18% -10%, #27272a 0, transparent 34rem), radial-gradient(circle at 90% 100%, #18181b 0, transparent 30rem), #09090b; }
+button, input, textarea { font: inherit; }
+button { border: 0; border-radius: 11px; background: #f4f4f5; color: #09090b; padding: 11px 16px; font-weight: 750; cursor: pointer; }
+button:disabled { opacity: .5; cursor: wait; }
+button.secondary { background: #18181b; color: #e4e4e7; border: 1px solid #27272a; }
+.shell { width: min(1040px, calc(100% - 44px)); margin: 0 auto; padding: 28px 0 70px; }
+.topbar, .activity-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { font-size: 12px; font-weight: 850; letter-spacing: .28em; }
+.runtime, .eyebrow, .event-kind { color: #71717a; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+.workspace-panel { margin-top: 13vh; max-width: 820px; }
+h1 { margin: 14px 0; font-size: clamp(46px, 7vw, 82px); line-height: .94; letter-spacing: -.06em; }
+.workspace-panel > p { max-width: 650px; color: #a1a1aa; line-height: 1.65; font-size: 17px; }
+label { display: block; margin-top: 24px; color: #a1a1aa; font-size: 12px; }
+input, textarea { width: 100%; margin-top: 9px; border: 1px solid #27272a; border-radius: 12px; outline: none; background: rgba(17,17,19,.82); color: #f4f4f5; padding: 14px; resize: vertical; }
+input:focus, textarea:focus { border-color: #52525b; }
+.actions { display: flex; gap: 10px; margin-top: 16px; }
+.activity { margin-top: 70px; border-top: 1px solid #27272a; }
+.activity-head { padding: 15px 0; color: #d4d4d8; font-size: 12px; }
+.empty { padding: 28px 0; color: #52525b; }
+article { padding: 17px 0; border-top: 1px solid #18181b; }
+article p { margin: 7px 0 0; white-space: pre-wrap; color: #a1a1aa; line-height: 1.55; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
+@media (max-width: 700px) { .shell { width: min(100% - 28px, 1040px); } .workspace-panel { margin-top: 10vh; } h1 { font-size: 48px; } .actions { flex-direction: column; } }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import {
-  nativeStatus,
   bash,
   readFile,
   commandApprovalRequired,
@@ -16,11 +17,19 @@ interface OutputLine {
   text: string;
 }
 
+type AgentEvent = {
+  task_id: string;
+  kind: string;
+  message: string;
+};
+
 export function App() {
-  const [status, setStatus] = useState("Native core ready");
+  const [workspace, setWorkspace] = useState("");
+  const [request, setRequest] = useState("");
+  const [events, setEvents] = useState<AgentEvent[]>([]);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("Native runtime ready");
   const [lines, setLines] = useState<OutputLine[]>([]);
-  const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [command, setCommand] = useState("git status --short");
   const [result, setResult] = useState<BashResult | null>(null);
   const [readPath, setReadPath] = useState("README.md");
@@ -38,22 +47,71 @@ export function App() {
     return () => unlisten?.();
   }, []);
 
-  const checkNativeCore = useCallback(async () => {
-    setBusy(true);
-    try {
-      setStatus(await nativeStatus());
-    } catch {
-      setStatus("Native command unavailable");
-    } finally {
-      setBusy(false);
-    }
+
+  useEffect(() => {
+    let dispose: (() => void) | undefined;
+    listen<AgentEvent>("entry://agent-event", (event) => {
+      setEvents((current) => [...current, event.payload]);
+      setStatus(event.payload.kind);
+      if (event.payload.kind === "task.completed" || event.payload.kind === "task.error") {
+        setBusy(false);
+      }
+    }).then((unlisten) => { dispose = unlisten; });
+    return () => dispose?.();
   }, []);
 
+  async function runAgent() {
+    if (!workspace.trim() || !request.trim()) return;
+    setBusy(true);
+    setEvents([]);
+    const nextTaskId = crypto.randomUUID();
+    localStorage.setItem("entry-desktop-task-id", nextTaskId);
+    try {
+      const result = await invoke<string>("run_agent", {
+        taskId: nextTaskId,
+        request,
+        workspace,
+      });
+      setStatus(result);
+    } catch (error) {
+      setStatus(String(error));
+      setBusy(false);
+    }
+  }
+
+  async function resumeLastTask() {
+    if (!workspace.trim()) return;
+    const savedTaskId = localStorage.getItem("entry-desktop-task-id");
+    if (!savedTaskId) return;
+    setBusy(true);
+    setEvents([]);
+    try {
+      const result = await invoke<string>("run_agent", {
+        taskId: savedTaskId,
+        request: "resume",
+        workspace,
+      });
+      setStatus(result);
+    } catch (error) {
+      setStatus(String(error));
+      setBusy(false);
+    }
+  }
+
+  async function checkNativeCore() {
+    try {
+      setStatus(await invoke<string>("native_status"));
+    } catch {
+      setStatus("Native command unavailable");
+    }
+  }
+
+  const [wsInfo, setWsInfo] = useState<WorkspaceInfo | null>(null);
   const detectWorkspace = useCallback(async () => {
     try {
-      setWorkspace(await workspaceInfo("."));
+      setWsInfo(await workspaceInfo("."));
     } catch {
-      setWorkspace(null);
+      setWsInfo(null);
     }
   }, []);
 
@@ -96,6 +154,54 @@ export function App() {
 
   return (
     <main className="shell">
+      <header className="topbar">
+        <span className="brand">ENTRY</span>
+        <span className="runtime">LOCAL RUNTIME · {busy ? "RUNNING" : "READY"}</span>
+      </header>
+
+      <section className="workspace-panel">
+        <div className="eyebrow">NATIVE AGENT</div>
+        <h1>Build on your machine.</h1>
+        <p>Entry now runs its tools, files, processes, and task state locally. The model remains a replaceable network plugin.</p>
+
+        <label>
+          Workspace
+          <input value={workspace} onChange={(e) => setWorkspace(e.target.value)} placeholder="C:\path\to\repo" />
+        </label>
+
+        <label>
+          Task
+          <textarea value={request} onChange={(e) => setRequest(e.target.value)} placeholder="Ask Entry to inspect, change, and verify this repository…" rows={5} />
+        </label>
+
+        <div className="actions">
+          <button onClick={runAgent} disabled={busy || !workspace.trim() || !request.trim()}>
+            {busy ? "Agent running…" : "Run agent"}
+          </button>
+          <button className="secondary" onClick={resumeLastTask} disabled={busy || !workspace.trim()}>Resume last task</button>
+          <button className="secondary" onClick={checkNativeCore}>Check runtime</button>
+        </div>
+      </section>
+
+      <section className="activity">
+        <div className="activity-head">
+          <span>Execution</span>
+          <span>{status}</span>
+        </div>
+        {events.length === 0 ? (
+          <div className="empty">No task activity yet.</div>
+        ) : (
+          events.map((event, index) => (
+            <article key={index}>
+              <span className="event-kind">{event.kind}</span>
+              <p>{event.message}</p>
+            </article>
+          ))
+        )}
+      </section>
+
+      <details className="dev-tools">
+        <summary>Developer tools (bash · read · processes)</summary>
       <section className="hero">
         <span className="eyebrow">ENTRY DESKTOP / 0.3 · PHASE 1</span>
         <h1>Agent runtime, on your machine.</h1>
@@ -173,13 +279,13 @@ export function App() {
       <section className="panel">
         <h2>Workspace</h2>
         <button onClick={detectWorkspace}>Detect workspace</button>
-        {workspace && (
+        {wsInfo && (
           <ul className="ws">
-            <li>root: {workspace.root}</li>
-            <li>git repo: {workspace.isGitRepo ? "yes" : "no"}</li>
-            {workspace.gitBranch && <li>branch: {workspace.gitBranch}</li>}
-            <li>package.json: {workspace.hasPackageJson ? "yes" : "no"}</li>
-            <li>Cargo.toml: {workspace.hasCargoToml ? "yes" : "no"}</li>
+            <li>root: {wsInfo.root}</li>
+            <li>git repo: {wsInfo.isGitRepo ? "yes" : "no"}</li>
+            {wsInfo.gitBranch && <li>branch: {wsInfo.gitBranch}</li>}
+            <li>package.json: {wsInfo.hasPackageJson ? "yes" : "no"}</li>
+            <li>Cargo.toml: {wsInfo.hasCargoToml ? "yes" : "no"}</li>
           </ul>
         )}
       </section>
@@ -198,6 +304,7 @@ export function App() {
           <span>Plan → tools → observe → verify → respond.</span>
         </article>
       </section>
+      </details>
     </main>
   );
 }

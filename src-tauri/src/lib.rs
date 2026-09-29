@@ -72,6 +72,21 @@ impl AppState {
     }
 }
 
+mod agent;
+mod network;
+mod plugin;
+mod runtime;
+
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRequest {
+    task_id: String,
+    request: String,
+    workspace: String,
+}
+
 #[tauri::command]
 fn native_status() -> String {
     "Rust native core online".to_owned()
@@ -312,12 +327,31 @@ fn command_approval_required(command: String) -> bool {
     approval::command_needs_approval(&command)
 }
 
+#[tauri::command]
+fn plugin_status(workspace: String) -> Vec<(&'static str, Vec<&'static str>)> {
+    match plugin::PluginRegistry::new(std::path::PathBuf::from(workspace)) {
+        Ok(registry) => registry.descriptors(),
+        Err(_) => vec![],
+    }
+}
+
+#[tauri::command]
+async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String, String> {
+    let workspace = dunce::canonicalize(&input.workspace)
+        .map_err(|e| format!("Invalid workspace: {e}"))?;
+    if !workspace.is_dir() {
+        return Err("Workspace must be a directory.".into());
+    }
+    agent::run(input.task_id, input.request, workspace, app).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             native_status,
+            // Workspace + process contracts (Phase 1-2)
             set_workspace,
             workspace_info,
             bash,
@@ -325,7 +359,10 @@ pub fn run() {
             command_approval_required,
             cancel_process,
             cancel_task,
-            process_list
+            process_list,
+            // Agent runtime + plugins (merged from remote)
+            plugin_status,
+            run_agent
         ])
         .run(tauri::generate_context!())
         .expect("error while running Entry Desktop");
