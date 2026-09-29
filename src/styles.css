@@ -1,88 +1,364 @@
-:root {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #f4f4f5;
-  background: #09090b;
-  font-synthesis: none;
+/* Entry Desktop — Geist design tokens
+   Spec: docs/geist-design.md (studied from vercel.com/geist).
+   Dark-first per goal.md UI quality bar; Geist Sans + Geist Mono bundled
+   from the `geist` package (OFL) into public/fonts. */
+
+/* ---------- Fonts (variable, liga on) ---------- */
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
 }
 
-* { box-sizing: border-box; }
+/* ---------- Geist tokens (dark-first) ---------- */
+:root {
+  /* backgrounds scale */
+  --ds-background-100: #0a0a0a;
+  --ds-background-200: #111111;
 
+  /* gray scale, dark-mode values (usage contract: 100 bg … 1000 text) */
+  --ds-gray-100: #1a1a1a;
+  --ds-gray-200: #222222;
+  --ds-gray-300: #2a2a2a;
+  --ds-gray-400: #333333; /* default border */
+  --ds-gray-500: #4d4d4d; /* hover border */
+  --ds-gray-600: #666666; /* active border */
+  --ds-gray-700: #8f8f8f; /* high-contrast bg */
+  --ds-gray-800: #a1a1a1;
+  --ds-gray-900: #a1a1a1; /* secondary text */
+  --ds-gray-1000: #ededed; /* primary text */
+
+  /* semantic (workflow accents — semantic only, never decorative) */
+  --ds-blue-600: #0a72ef; /* Develop / focus ring */
+  --ds-red-600: #ff5b4f; /* Ship red / errors, stderr */
+  --ds-green-600: #46a758; /* success / exit 0 chip */
+
+  /* materials */
+  --radius-base: 6px;
+  --radius-medium: 12px;
+
+  /* shadow-as-border → dark mode: hairline + lift, whisper shadows */
+  --material-base: 0 0 0 1px var(--ds-gray-400);
+  --material-medium:
+    0 0 0 1px var(--ds-gray-400), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --focus-ring: 0 0 0 1px var(--ds-background-100),
+    0 0 0 3px var(--ds-blue-600);
+
+  /* type */
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* spacing scale (Geist: jumps 16→32) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 32px;
+  --space-8: 48px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 120ms;
+
+  color-scheme: dark;
+}
+
+/* ---------- Base ---------- */
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
   margin: 0;
-  min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 20% 0%, #27272a 0, transparent 32rem),
-    #09090b;
+  background: var(--ds-background-100);
+  color: var(--ds-gray-1000);
+  font-family: var(--font-sans);
+  font-feature-settings: "liga" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-button {
-  border: 1px solid #3f3f46;
-  border-radius: 10px;
-  background: #f4f4f5;
-  color: #09090b;
-  padding: 11px 16px;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-button:disabled { opacity: .55; cursor: wait; }
-
-.shell {
-  width: min(1100px, calc(100% - 40px));
-  margin: 0 auto;
-  padding: 12vh 0 10vh;
-}
-
-.hero { max-width: 760px; }
-
-.eyebrow {
-  color: #a1a1aa;
-  font-size: 12px;
-  letter-spacing: .18em;
-}
-
+/* ---------- Typography presets (Geist core) ---------- */
+/* heading-48: 48/600, lh 1.0–1.17, -2.4px — display hero */
 h1 {
-  margin: 18px 0;
-  font-size: clamp(42px, 7vw, 82px);
-  line-height: .98;
-  letter-spacing: -.055em;
+  margin: var(--space-4) 0;
+  font-size: 48px;
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -2.4px;
 }
 
-p {
-  max-width: 680px;
-  color: #a1a1aa;
-  font-size: 19px;
-  line-height: 1.65;
+/* heading-16 subtle: panel titles */
+h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.32px;
+  color: var(--ds-gray-1000);
 }
 
-.status {
-  margin-top: 14px;
-  color: #71717a;
-  font-family: ui-monospace, SFMono-Regular, monospace;
+/* label-14-mono — eyebrow / technical label */
+.eyebrow {
+  font-family: var(--font-mono);
   font-size: 13px;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--ds-gray-900);
 }
 
+/* copy-16: intro copy */
+p {
+  max-width: 640px;
+  margin: 0 0 var(--space-3);
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--ds-gray-900);
+}
+
+/* ---------- Layout: 8px scale, gallery spacing ---------- */
+.shell {
+  width: min(1100px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: var(--space-8) 0 var(--space-8);
+}
+
+.hero {
+  max-width: 760px;
+  padding-bottom: var(--space-6);
+}
+
+/* ---------- Panels: shadow-as-border, material-medium ---------- */
+.panel {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-medium);
+  background: var(--ds-background-200);
+  box-shadow: var(--material-medium);
+}
+
+/* ---------- Buttons (Geist button spec) ---------- */
+button {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-base);
+  background: var(--ds-gray-1000); /* primary: high-contrast bg */
+  color: var(--ds-background-100);
+  padding: 8px 16px;
+  font-family: var(--font-sans);
+  font-size: 14px; /* text-button-14 */
+  line-height: 1.43;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+button:hover:not(:disabled) {
+  background: #ffffff; /* high-contrast hover */
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button:disabled {
+  background: var(--ds-gray-200);
+  color: var(--ds-gray-700);
+  cursor: not-allowed;
+}
+
+/* ---------- Inputs (mono — technical content) ---------- */
+input {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-base);
+  background: var(--ds-background-100);
+  color: var(--ds-gray-1000);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.43;
+  box-shadow: var(--material-base);
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+  min-width: 0;
+}
+
+input:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- Rows / output ---------- */
+.row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.row input {
+  flex: 1;
+}
+
+/* terminal output: copy-13-mono on Background 1 */
+.output {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  min-height: 96px;
+  max-height: 320px;
+  overflow: auto;
+  border-radius: var(--radius-base);
+  background: var(--ds-background-100);
+  box-shadow: var(--material-base);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ds-gray-900);
+  white-space: pre-wrap;
+}
+
+.output .out {
+  color: var(--ds-gray-1000);
+}
+.output .err {
+  color: var(--ds-red-600); /* semantic red — stderr only */
+}
+
+/* ---------- Status badges (pills — badges only) ---------- */
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--ds-gray-200);
+  color: var(--ds-gray-900);
+}
+.chip.ok {
+  background: rgba(70, 167, 88, 0.15);
+  color: var(--ds-green-600);
+}
+.chip.fail {
+  background: rgba(255, 91, 79, 0.12);
+  color: var(--ds-red-600);
+}
+
+/* ---------- Workspace list ---------- */
+.ws {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ds-gray-900);
+}
+.ws strong {
+  color: var(--ds-gray-1000);
+  font-weight: 500;
+}
+
+/* ---------- Card grid (shadow-as-border) ---------- */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 90px;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
 }
 
 article {
-  min-height: 150px;
-  padding: 22px;
-  border: 1px solid #27272a;
-  border-radius: 14px;
-  background: #111113;
+  min-height: 140px;
+  padding: var(--space-4);
+  border-radius: var(--radius-medium);
+  background: var(--ds-background-200);
+  box-shadow: var(--material-base);
+  transition: box-shadow var(--duration-fast) var(--ease-out);
 }
 
-article strong, article span { display: block; }
-article strong { margin-bottom: 10px; }
-article span { color: #71717a; line-height: 1.5; }
+article:hover {
+  box-shadow: var(--material-medium);
+}
 
+article strong,
+article span {
+  display: block;
+}
+article strong {
+  margin-bottom: var(--space-2);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.32px;
+}
+article span {
+  font-size: 14px;
+  line-height: 1.43;
+  color: var(--ds-gray-900);
+}
+
+/* ---------- Status line ---------- */
+.status {
+  margin-top: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ds-gray-800);
+}
+
+/* ---------- Responsive ---------- */
 @media (max-width: 700px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  h1 {
+    font-size: 40px; /* heading-40 */
+    letter-spacing: -2.4px;
+  }
+}
+
+/* ---------- Dark scrollbar ---------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-gray-500) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--ds-gray-500);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }

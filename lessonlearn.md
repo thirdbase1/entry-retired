@@ -377,3 +377,73 @@ Approvals are bound to the execution context and are re-evaluated when the backe
 
 ### Decision
 Make execution backend identity part of every task and operation, with local as the default. Keep remote sandbox provisioning explicitly opt-in.
+
+## 2026-09-30 — Phase 1: native execution
+### Lesson 12: Streaming output needs a reader thread + polling wait loop
+A one-shot `child.wait()` blocks and cannot poll a cancel flag. The working pattern: drain stdout/stderr on reader threads through a channel, poll `try_wait()` every 50ms, kill on cancellation, then do a final drain. Per-line events go to the UI via Tauri `emit` on `process:*` channels.
+
+### Lesson 13: Tauri commands that supervise processes must be `async` + `spawn_blocking`
+A synchronous `#[tauri::command]` runs on the main thread; a long-running child freezes the app and blocks cancellation. Mark the command `async` and move child supervision into `tauri::async_runtime::spawn_blocking`.
+
+### Lesson 14: Tauri state cannot be moved into spawn_blocking
+`State<'_, T>` borrows and cannot cross into a spawned task. Clone cheap inner handles (the executor is just an atomic counter behind Arc) or use `app.state::<T>()` inside the task with an owned `AppHandle`.
+
+### Lesson 15: generate_context! fails at compile time without icons
+tauri.conf.json bundling with an empty icon list and no icons on disk breaks `cargo check` with a proc-macro panic about a missing icon.png, not a normal compile error. Generate icons early (`pnpm tauri icon`).
+
+### Lesson 16: Tauri 2 emit signature
+`Emitter::emit` takes `&str`, so an owned `String` event name needs `&name`. The generic form is `emit<R: Runtime>(app: &AppHandle<R>, ...)` to stay testable outside the concrete runtime.
+
+## 2026-09-30 — Phase 1: upstream-compatible tool boundaries
+
+Lesson 17: Desktop tools must reuse upstream Entry's contracts, not reinvent them
+Building bash/read from scratch produced generic, weaker tools. Inspecting
+`entry-agents/packages/agent/tools/*` gave the proven contracts: workspace-only
+relative `cwd`, narrow destructive-command approval patterns, the
+`<external_file_content>` boundary wrapper, and the three read ceilings
+(2000 lines / 128KB / 2000 chars per line). Ported to Rust rather than
+duplicated: `path_security.rs`, `approval.rs`, `content_boundary.rs`,
+`read_ceilings.rs`. AGENTS.md's "inspect upstream before inventing" rule is
+enforced by doing exactly that as the first step, not the last.
+
+Lesson 18: Capture upstream's bug fixes, not just its features
+`selectLines` carries a fix for past-EOF offsets producing an inverted range
+(startLine 50, endLine 10 on a 10-line file); `splitLines` exists because
+`split("\n")` leaves a phantom trailing entry that makes `totalLines` one too
+high. Porting the helpers without reading their comments would have
+reintroduced both bugs. Port tests alongside the code so the fixes come with
+them.
+
+Lesson 19: A word-boundary regex cannot match `/.ssh`
+Upstream's `SENSITIVE_FILE_PATTERNS` includes `\.ssh\b`, which never matches
+`~/.ssh/config` — there is no word boundary between `/` and `.`. On web Entry
+the credential risk is a cloud sandbox; on Desktop the agent touches the real
+home directory, so the gap matters more. Divergence: match the directory with
+an explicit separator (`(?:^|[\s/\\])\.ssh(?:$|[\s/\\])`) and record it here.
+Deliberate divergence from upstream, logged per AGENTS.md.
+
+Lesson 20: `^/dev/[^/]+$` is what catches block devices
+An allowlist of known device names (`null`, `zero`, `random`, …) misses
+`/dev/sda`. Upstream's third alternative matches any single-segment `/dev/<x>`.
+Porting only the allowlist silently weakened the guard; the test
+(`is_device_path("/dev/sda")`) caught it.
+
+Lesson 21: Integration tests can exercise the executor without a Tauri runtime
+`Executor::run` is generic over `R: Runtime`, but the boundary pipeline
+(cwd gate → approval gate → spawn → timeout) is testable directly with
+`std::process::Command`. `tests/bash_pipeline.rs` covers escaping cwd refusal,
+subdirectory execution, real timeout kills, and layer independence — no app
+instance required.
+
+Lesson 22: Approval must be enforced in the runtime, not the UI
+`command_approval_required` is exposed so the UI can warn *before* running, but
+`bash` refuses dangerous commands server-side regardless of what the caller
+asks. A UI-only gate would be bypassable by any future IPC caller, which
+contradicts goal.md §13 ("the runtime decides").
+
+Lesson 23: Timeout semantics belong to the executor, not the caller
+Upstream's bash timeout is kill-and-report-failure, not "stop waiting". The
+executor's `run` takes `Option<u64>` and kills the child on expiry, returning
+`exitCode: null` plus `Command timed out after <n>ms` on stderr. Putting the
+deadline in the wait loop (not a separate timer thread) keeps cancellation and
+timeout on one code path.
