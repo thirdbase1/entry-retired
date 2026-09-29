@@ -514,3 +514,21 @@ build --prod → deploy --prebuilt (their cloud npm install was flaky;
 prebuilt skips it). Env set per-key via POST /v10/projects/<p>/env?upsert=true.
 Entry-agents repo REVERTED to c7769d4 and prod redeployed clean (dpl
 F4ReJh promoted) after my unauthorized in-app change — never touch upstream.
+
+43+. Seamless desktop login (device flow, zero typing) — deployed on our own
+backend only, entry-agents untouched:
+- POST /api/desktop/device/start → user_code + device_code(hash) + verifyUrl
+- Browser page /desktop/device shows the code + "Continue with GitHub/Vercel"
+- /api/desktop/auth/authorize → provider consent (same OAuth apps, callback =
+  OUR backend) → /api/desktop/auth/callback exchanges code, upserts shared
+  users/accounts rows (so plan/credits carry over), inserts auth_sessions row
+  (Better Auth shape: base64url token, 30d), marks device code approved
+- POST /api/desktop/device/poll → complete{sessionToken once, then row deleted}
+- Vercel env reading: sensitive vars NEVER decryptable via API; encrypted vars
+  decrypt via GET /v9/projects/:id/env/:envId (by env ID, not key!). Got real
+  POSTGRES_URL, GitHub/Vercel client ids+secrets that way. GATEWAY_API_KEY and
+  prod BETTER_AUTH_SECRET are sensitive → desktop backend uses its own secret;
+  gateway key still needed from user's dashboard.
+- Next 15 pageProps searchParams is a Promise. App Router needs app/layout.tsx.
+- Python-written TS with backticks breaks (\\` literals) — write template
+  literals carefully or move styles to globals.css.

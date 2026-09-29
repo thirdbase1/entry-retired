@@ -1,6 +1,36 @@
 {
   "version": 3,
   "middleware": {},
-  "functions": {},
+  "functions": {
+    "/desktop/device/page": {
+      "files": [
+        "server/server-reference-manifest.js",
+        "server/app/desktop/device/page_client-reference-manifest.js",
+        "server/middleware-build-manifest.js",
+        "server/middleware-react-loadable-manifest.js",
+        "server/next-font-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "server/edge-runtime-webpack.js",
+        "server/app/desktop/device/page.js"
+      ],
+      "name": "app/desktop/device/page",
+      "page": "/desktop/device/page",
+      "matchers": [
+        {
+          "regexp": "^/desktop/device$",
+          "originalSource": "/desktop/device"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "2FHooU74n3VVijxsJQPj4",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "qliLzb9UYOIXLLJ/NaKYUWhusyNcpsi7AwD2wGLuVRA=",
+        "__NEXT_PREVIEW_MODE_ID": "9c3d0589da37fc23723dcde5eb4e203a",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "4476056fdd8c6baa5c9bc932c6ed1464020b035499a28b2dbd2a2bdad3ffa1cf",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "d15f4b0467f47f980506de520b35568989952921a4cd7a50415b61953c1f4976"
+      }
+    }
+  },
   "sortedMiddleware": []
 }

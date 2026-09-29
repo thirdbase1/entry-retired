@@ -1,6 +1,12 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/desktop/auth/authorize/route": "app/api/desktop/auth/authorize/route.js",
+  "/api/desktop/auth/callback/route": "app/api/desktop/auth/callback/route.js",
   "/api/desktop/chat/route": "app/api/desktop/chat/route.js",
-  "/api/desktop/me/route": "app/api/desktop/me/route.js",
+  "/api/desktop/device/poll/route": "app/api/desktop/device/poll/route.js",
   "/api/desktop/models/route": "app/api/desktop/models/route.js",
-  "/api/desktop/proxy/[service]/route": "app/api/desktop/proxy/[service]/route.js"
+  "/api/desktop/me/route": "app/api/desktop/me/route.js",
+  "/api/desktop/proxy/[service]/route": "app/api/desktop/proxy/[service]/route.js",
+  "/api/desktop/device/start/route": "app/api/desktop/device/start/route.js",
+  "/desktop/device/page": "app/desktop/device/page.js"
 }

@@ -7,11 +7,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "better-auth": "^1.7.6",
+    "drizzle-orm": "^0.45.3",
     "next": "^15",
     "postgres": "^3"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^22"
+    "@types/node": "^22",
+    "typescript": "^5"
   }
 }

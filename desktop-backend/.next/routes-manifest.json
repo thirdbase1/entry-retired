@@ -28,7 +28,20 @@
       "namedRegex": "^/api/desktop/proxy/(?<nxtPservice>[^/]+?)(?:/)?$"
     }
   ],
-  "staticRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/desktop/device",
+      "regex": "^/desktop/device(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/desktop/device(?:/)?$"
+    }
+  ],
   "dataRoutes": [],
   "rsc": {
     "header": "rsc",
