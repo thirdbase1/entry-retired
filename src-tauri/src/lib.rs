@@ -14,6 +14,7 @@
 //! filesystem path; everything routes through the registered workspace.
 
 pub mod approval;
+pub mod approval_service;
 mod content_boundary;
 pub mod path_security;
 pub mod process_manager;
@@ -73,9 +74,12 @@ impl AppState {
 }
 
 mod agent;
+mod agent_loop;
 mod backend;
 mod device_auth;
 mod integrations;
+mod jobs;
+mod session_log;
 mod model_selection;
 mod network;
 mod plugin;
@@ -94,6 +98,10 @@ struct AgentRequest {
     reasoning_effort: Option<String>,
     /// Model chosen in the picker (backend catalog id).
     model_id: Option<String>,
+    /// Stable session identity — the log file, approval routing, and jobs all
+    /// key off it. Empty means "derive one from task_id" (older callers).
+    #[serde(default)]
+    session_id: String,
 }
 
 #[tauri::command]
@@ -351,24 +359,188 @@ fn plugin_status(workspace: String) -> Vec<(&'static str, Vec<&'static str>)> {
     }
 }
 
+/// A live agent run: the deps the loop reads (approvals, interrupt flag) plus
+/// the project it belongs to. One run per session at a time.
+struct ActiveRun {
+    approvals: std::sync::Arc<approval_service::ApprovalService>,
+    interrupt: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+/// App-wide registry of live runs + background jobs.
+struct AgentHost {
+    runs: Mutex<std::collections::HashMap<String, ActiveRun>>,
+    jobs: jobs::JobRegistry,
+}
+
+impl AgentHost {
+    fn new() -> Self {
+        Self {
+            runs: Mutex::new(std::collections::HashMap::new()),
+            jobs: jobs::JobRegistry::new(),
+        }
+    }
+}
+
 #[tauri::command]
-async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String, String> {
+async fn run_agent(
+    app: tauri::AppHandle,
+    host: tauri::State<'_, AgentHost>,
+    input: AgentRequest,
+) -> Result<String, String> {
     let workspace =
         dunce::canonicalize(&input.workspace).map_err(|e| format!("Invalid workspace: {e}"))?;
     if !workspace.is_dir() {
         return Err("Workspace must be a directory.".into());
     }
+    let session_id = if input.session_id.trim().is_empty() {
+        input.task_id.clone()
+    } else {
+        input.session_id.clone()
+    };
+
+    // One live run per session: a second run for the same session is refused
+    // (the UI drives a queue; the runtime never silently stacks turns).
+    if host.runs.lock().unwrap().contains_key(&session_id) {
+        return Err("This session already has a turn in flight.".into());
+    }
+
+    let approvals = std::sync::Arc::new(approval_service::ApprovalService::new());
+    // Route approval prompts into the webview as events.
+    {
+        let handle = app.clone();
+        let sid = session_id.clone();
+        approvals.set_ui_notify(move |req| {
+            use tauri::Emitter;
+            let payload = serde_json::json!({
+                "sessionId": sid,
+                "callId": req.call_id,
+                "toolName": req.tool_name,
+                "reason": req.reason,
+                "createdAt": req.created_at,
+            });
+            let _ = handle.emit("entry://approval-request", payload);
+        });
+    }
+    let interrupt = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    host.runs.lock().unwrap().insert(
+        session_id.clone(),
+        ActiveRun {
+            approvals: approvals.clone(),
+            interrupt: interrupt.clone(),
+        },
+    );
+
+    let deps = std::sync::Arc::new(agent_loop::AgentDeps {
+        approvals,
+        interrupt,
+    });
     let session = crate::backend::BackendSession::load(&app);
-    agent::run(
-        input.task_id,
-        input.request,
+    let result = agent_loop::run(
+        &session_id,
+        Some(input.request),
         workspace,
         app,
         input.reasoning_effort,
         input.model_id,
         session,
+        deps,
     )
-    .await
+    .await;
+
+    host.runs.lock().unwrap().remove(&session_id);
+    result.map(|o| o.final_text)
+}
+
+/// The UI answers a pending approval prompt. Unknown ids are ignored so a
+/// request always resolves through its timeout instead of being lost.
+#[tauri::command]
+fn answer_approval(
+    host: tauri::State<'_, AgentHost>,
+    session_id: String,
+    call_id: String,
+    decision: String,
+) -> Result<bool, String> {
+    let outcome = match decision.as_str() {
+        "allow" | "allowed-once" => approval_service::ApprovalOutcome::AllowedOnce,
+        "reject" | "rejected" => approval_service::ApprovalOutcome::Rejected,
+        "cancel" | "cancelled" => approval_service::ApprovalOutcome::Cancelled,
+        other => return Err(format!("Unknown approval decision: {other}")),
+    };
+    let runs = host.runs.lock().unwrap();
+    match runs.get(&session_id) {
+        Some(run) => Ok(run.approvals.answer(&call_id, outcome)),
+        None => Ok(false),
+    }
+}
+
+/// Interrupt the live turn for a session. Interrupt is a request: the loop
+/// converges and records `turn.interrupted` itself.
+#[tauri::command]
+fn interrupt_agent(host: tauri::State<'_, AgentHost>, session_id: String) -> bool {
+    let runs = host.runs.lock().unwrap();
+    match runs.get(&session_id) {
+        Some(run) => {
+            run.interrupt
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            run.approvals.cancel_all();
+            true
+        }
+        None => false,
+    }
+}
+
+/// Set the approval policy for a live run (Ask | Never).
+#[tauri::command]
+fn set_approval_policy(
+    host: tauri::State<'_, AgentHost>,
+    session_id: String,
+    policy: String,
+) -> Result<bool, String> {
+    let parsed = match policy.as_str() {
+        "ask" => approval_service::ApprovalPolicy::Ask,
+        "never" => approval_service::ApprovalPolicy::Never,
+        other => return Err(format!("Unknown approval policy: {other}")),
+    };
+    let runs = host.runs.lock().unwrap();
+    match runs.get(&session_id) {
+        Some(run) => {
+            run.approvals.set_policy(parsed);
+            Ok(true)
+        }
+        None => Ok(false),
+    }
+}
+
+/// Read the session log projection (turns → records) for UI replay.
+#[tauri::command]
+fn session_events(workspace: String, session_id: String) -> Result<Vec<serde_json::Value>, String> {
+    let workspace = dunce::canonicalize(&workspace).map_err(|e| format!("Invalid workspace: {e}"))?;
+    let log = session_log::SessionLog::open(&workspace, &session_id)?;
+    log.project()
+}
+
+/// List background jobs for a session.
+#[tauri::command]
+fn job_list(host: tauri::State<'_, AgentHost>, session_id: String) -> Vec<serde_json::Value> {
+    host.jobs.list(&session_id)
+}
+
+/// Kill is only a request — the registry records it and the runner converges.
+#[tauri::command]
+fn job_kill(host: tauri::State<'_, AgentHost>, session_id: String, job_id: String) -> Result<(), String> {
+    host.jobs.kill(&session_id, &job_id, "user requested")
+}
+
+/// Read a window of job output by absolute offset.
+#[tauri::command]
+fn job_output(
+    host: tauri::State<'_, AgentHost>,
+    session_id: String,
+    job_id: String,
+    from_offset: u64,
+) -> Result<serde_json::Value, String> {
+    let (text, next) = host.jobs.read_output(&session_id, &job_id, from_offset)?;
+    Ok(serde_json::json!({"text": text, "nextOffset": next}))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -384,6 +556,7 @@ pub fn run() {
             }
         }))
         .manage(AppState::new())
+        .manage(AgentHost::new())
         .invoke_handler(tauri::generate_handler![
             native_status,
             // Workspace + process contracts (Phase 1-2)
@@ -403,7 +576,14 @@ pub fn run() {
             device_auth::session_info,
             device_auth::sign_out,
             device_auth::model_catalog,
-            run_agent
+            run_agent,
+            answer_approval,
+            interrupt_agent,
+            set_approval_policy,
+            session_events,
+            job_list,
+            job_kill,
+            job_output
         ])
         .run(tauri::generate_context!())
         .expect("error while running Entry Desktop");

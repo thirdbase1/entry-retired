@@ -587,3 +587,6 @@ backend only, entry-agents untouched:
 - Shipping BOTH NSIS setup.exe and WiX MSI per release means installing setup.exe over an MSI leaves two uninstall entries and NSIS shows its "recommended to uninstall the current version first" page. DeepSeek-grade UX: ONE NSIS per-user installer (bundle.targets without msi) — upgrades in place silently.
 ## Lesson 54 - Auth lifecycle: transient failure must not log out
 - session_info returned Err on any network error -> frontend .catch() treated it as signed-out -> blank/login flash. Law: only 401 (SESSION_EXPIRED) clears the session; offline/5xx keeps the stored session and degrades. Sign-out now revokes server-side (POST /api/desktop/signout deletes the auth_sessions row) before clearing locally.
+
+## Lesson 53
+Session log IS the session: append-only JSONL envelope {type,seq,time,data,ignorable?}; conversation rebuild = exact replay; model-visible iff logged. Approval = closed outcome union (allowed-once|rejected|cancelled|unavailable), fail-closed, ask|never policy enforced INSIDE the service before dispatch, turn-enclosed audit pair asked+decided. Jobs: <kind>-N ids, output ring 256K live/16M spill, kill is only a request. UI: Enter submits (IME-safe), busy-Enter = queue|steer setting, approval takes over composer with Enter=allow / Esc=reject.
