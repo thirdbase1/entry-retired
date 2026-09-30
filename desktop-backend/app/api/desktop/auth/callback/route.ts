@@ -50,7 +50,13 @@ export async function GET(req: NextRequest) {
     const tokens = await exchangeCode(cfg, code, `${base}/api/desktop/auth/callback`);
     if (!tokens.accessToken) return fail("Provider rejected the sign-in");
     const profile = await fetchProfile(provider, cfg, tokens.accessToken);
-    if (!profile.email) return fail("No email accessible — allow email scope");
+    if (!profile.email) {
+      // Email can be private on GitHub even with the email scope granted.
+      // Upstream (entry-agents) links accounts by provider account id with
+      // allowDifferentEmails, so fall back to a stable synthetic address
+      // instead of failing the sign-in.
+      profile.email = `${provider}-${profile.providerAccountId}@users.entry.desktop`;
+    }
 
     // 3. Upsert user (shared users table: username unique per provider prefix)
     const username = `${profile.username || profile.email.split("@")[0]}`;

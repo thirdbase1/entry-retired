@@ -26,7 +26,7 @@ export function providerConfig(id: ProviderId, redirectUri: string): ProviderCon
       authorizeUrl: "https://github.com/login/oauth/authorize",
       tokenUrl: "https://github.com/login/oauth/access_token",
       profileUrl: "https://api.github.com/user",
-      scope: "read:user user:email",
+      scope: "user:email read:user",
       clientId: () => process.env.GITHUB_CLIENT_ID ?? "",
       clientSecret: () => process.env.GITHUB_CLIENT_SECRET ?? "",
       acceptsJson: true,

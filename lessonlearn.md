@@ -569,3 +569,8 @@ backend only, entry-agents untouched:
 - Never render the device code in ANY app UI (user security requirement): the approval page must not display it either; server-side lookup by user_code is enough.
 - Relaunch after browser login = custom URI scheme: Tauri deep-link plugin (entry://) + single-instance focus, mirroring dsh's setAsDefaultProtocolClient(dsh) + open-url handler.
 - GitHub/Vercel OAuth apps need BOTH callback URLs when two domains serve: entry-desktop-backend.vercel.app and desktop.entry-agents.dev.
+
+## Lesson 50 - Console window + GitHub email failure + product page
+- Tauri Windows release build WITHOUT #![windows_subsystem="windows"] in main.rs spawns a visible black console window; closing it kills the app. Always set it.
+- GitHub OAuth: even with user:email scope the profile email can be private - never fail sign-in on missing email; fall back to a stable synthetic identity (upstream links by provider account id).
+- A product page means a real marketing/download page (hero, features, per-OS download cards from the GitHub release API) - not an API listing.
