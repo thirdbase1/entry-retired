@@ -31,7 +31,7 @@ use read_ceilings::{
 use workspace::{Workspace, WorkspaceStatus};
 pub use workspace::{WorkspaceMetadata, WorkspacePolicy};
 
-use tauri::State;
+use tauri::{Manager, State};
 
 /// Upstream bash tool: combined output truncated after ~50,000 characters.
 const BASH_OUTPUT_CEILING: usize = 50_000;
@@ -375,6 +375,13 @@ async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String,
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // Second launch: focus the existing main window instead of a new one.
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }))
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             native_status,

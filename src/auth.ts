@@ -46,11 +46,8 @@ export function modelCatalog(): Promise<CatalogModel[]> {
 
 /** Open the verify URL in the user's default browser. */
 export async function openInBrowser(url: string): Promise<void> {
-  // tauri-plugin-opener v2; fall back to shell open for older setups.
-  try {
-    const mod = await import("@tauri-apps/plugin-opener");
-    await mod.openUrl(url);
-  } catch {
-    window.open(url, "_blank");
-  }
+  // tauri-plugin-opener v2 opens the SYSTEM browser. Never window.open:
+  // inside Tauri it spawns a blank child webview window instead.
+  const mod = await import("@tauri-apps/plugin-opener");
+  await mod.openUrl(url);
 }

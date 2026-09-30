@@ -560,3 +560,7 @@ backend only, entry-agents untouched:
 - Device approval page and backend dashboard share one token sheet (globals.css): Vercel palette, DSH radius law (xl20 cards, panel28 approval card), hairline #262626 borders.
 - Browser must open ONLY after an explicit user press on Sign in - prepare the device code first, open on click, never auto-launch.
 - Copy the SAME entry.svg (squircle + 3-bar glyph) to desktop public/logos AND backend public - one brand asset everywhere.
+
+## Lesson 48 - Blank second window + OTP in UI
+- window.open(url) inside a Tauri webview spawns a blank child webview window, NOT the system browser - always use tauri-plugin-opener only; add tauri-plugin-single-instance so double-launch focuses instead of duplicates.
+- Never render the device code in the desktop UI (DeepSeek-style): browser-only approval; the approval page shows the code, the app stays clean.

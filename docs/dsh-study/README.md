@@ -9,6 +9,8 @@ The donor architecture for Entry's Phases 4-7. Full briefs in this directory.
 3. session-persistence.md — append-only JSONL log, ignorable flag, compaction
 4. desktop-host-client.md — dumb shell/host split, MCP, credentials, jobs
 
+5. deep-dive.md — approval end-to-end, jobs/schedule survival, sandbox/host access, MCP internals, web UI mechanics
+
 ## Non-negotiable dsh rules we adopt
 - Everything is a plugin; core owns only fiber/loader/events
 - Model-visible <=> logged (derive history from the log, never store separately)

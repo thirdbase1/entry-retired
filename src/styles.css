@@ -421,16 +421,7 @@ article p { margin: 7px 0 0; white-space: pre-wrap; color: #a1a1aa; line-height:
   margin: 0 0 24px;
   line-height: 1.5;
 }
-.device-code {
-  font-family: ui-monospace, monospace;
-  font-size: 22px;
-  letter-spacing: 3px;
-  background: #171717;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  padding: 14px;
-  margin-bottom: 16px;
-}
+
 .login-btn { width: 100%; justify-content: center; margin-top: 8px; }
 .btn-primary {
   background: #ededed;
