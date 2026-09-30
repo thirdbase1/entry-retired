@@ -317,6 +317,9 @@ body[data-ds-dark-theme] { color-scheme: dark; }
 }
 .turn-status::before { content: "● "; color: var(--dsw-alias-state-success-primary); }
 .turn.interrupted .turn-status::before { color: var(--dsw-alias-state-error-primary); }
+.turn {
+  padding-right: 8px; box-sizing: border-box; min-width: 0;
+}
 .turn-meta {
   margin-left: auto; flex-shrink: 0; padding-left: 12px;
   font-family: var(--ds-font-family-code); font-variant-numeric: tabular-nums;

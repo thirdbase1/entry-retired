@@ -587,7 +587,9 @@ function TurnView({ turn, onBranch }: { turn: TurnProjection; onBranch?: (text: 
       )}
 
       {!open && lastAssistant?.kind === "assistant" && (
-        <div className="turn-preview">{lastAssistant.text.slice(0, 160)}</div>
+        <div className="turn-preview">
+          <Markdown>{lastAssistant.text}</Markdown>
+        </div>
       )}
     </div>
   );
