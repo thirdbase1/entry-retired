@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DownloadSection } from "./download";
 
 export const metadata: Metadata = {
   title: "Entry Desktop | The agent that works on your machine",
@@ -38,7 +39,7 @@ export default function HomePage() {
           runs its tools, files, and processes natively on your machine.
         </p>
         <div className="hero-cta">
-          <a className="cta-primary" href="#download">Download Desktop</a>
+          <a className="cta-primary" href="#download">Download for Windows</a>
           <a className="cta-ghost" href="https://github.com/thirdbase1/entry-desktop" target="_blank" rel="noreferrer">
             View on GitHub
           </a>
@@ -120,76 +121,5 @@ export default function HomePage() {
         </span>
       </footer>
     </div>
-  );
-}
-
-type DlLinks = {
-  win: string | null;
-  msi: string | null;
-  mac: string | null;
-  app: string | null;
-  deb: string | null;
-  rpm: string | null;
-};
-
-async function DownloadSection() {
-  let version = "latest";
-  let d: DlLinks = { win: null, msi: null, mac: null, app: null, deb: null, rpm: null };
-  try {
-    const res = await fetch(
-      "https://api.github.com/repos/thirdbase1/entry-desktop/releases/latest",
-      { next: { revalidate: 300 } },
-    );
-    if (res.ok) {
-      const rel = (await res.json()) as {
-        tag_name: string;
-        assets: { name: string; browser_download_url: string }[];
-      };
-      version = rel.tag_name;
-      const pick = (t: RegExp) =>
-        rel.assets.find((a) => t.test(a.name))?.browser_download_url ?? null;
-      d = {
-        win: pick(/x64-setup\.exe$/),
-        msi: pick(/x64_en-US\.msi$/),
-        mac: pick(/aarch64\.dmg$/),
-        app: pick(/amd64\.AppImage$/),
-        deb: pick(/amd64\.deb$/),
-        rpm: pick(/x86_64\.rpm$/),
-      };
-    }
-  } catch {
-    // offline build: render the section without links
-  }
-
-  const card = (
-    href: string | null,
-    os: string,
-    note: string,
-    primary = false,
-  ) =>
-    href ? (
-      <a className={`dl-card${primary ? " primary" : ""}`} href={href}>
-        <strong>{os}</strong>
-        <span>{note}</span>
-        <em>Download</em>
-      </a>
-    ) : null;
-
-  return (
-    <section className="download" id="download">
-      <h2>Entry Desktop for desktop</h2>
-      <p className="dl-desc">
-        Work in the background, edit local files, and handle long, complex
-        tasks with ease. Latest release: <code>{version}</code>.
-      </p>
-      <div className="dl-grid">
-        {card(d.win, "Windows", "Windows 10 or later · installer", true)}
-        {card(d.msi, "Windows (MSI)", "Managed / group-policy install")}
-        {card(d.mac, "macOS", "Apple silicon · macOS 13 or later")}
-        {card(d.app, "Linux", "AppImage · runs anywhere")}
-        {card(d.deb, "Linux", "Debian / Ubuntu package")}
-        {card(d.rpm, "Linux", "Fedora / RHEL package")}
-      </div>
-    </section>
   );
 }

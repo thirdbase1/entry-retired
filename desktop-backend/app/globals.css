@@ -186,3 +186,16 @@ code {
   .mock-side { display: none; }
   .nav-links { display: none; }
 }
+
+/* download refinements: logos, live badge, soon cards */
+.dl-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; }
+.dl-logo { width: 26px; height: 26px; flex: none; }
+.dl-card .dl-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.dl-card .dl-body strong { color: var(--fg, #ededed); font-size: 15px; }
+.dl-card .dl-body span { color: var(--fg-2, #a1a1a1); font-size: 13px; }
+.dl-card em { font-style: normal; font-size: 13px; color: var(--fg, #ededed); }
+.dl-card.soon { opacity: .55; cursor: default; pointer-events: none; }
+.dl-card.soon .soon-tag { color: #a1a1a1; border: 1px solid #333; border-radius: 999px; padding: 2px 10px; font-size: 11px; }
+.dl-live { margin-left: 10px; color: #0cce6b; font-size: 12px; }
+.dl-more { margin-top: 16px; color: #a1a1a1; font-size: 13px; }
+.dl-more a { color: #ededed; text-decoration: underline; }

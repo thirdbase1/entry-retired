@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const base = process.env.BETTER_AUTH_URL ?? req.nextUrl.origin;
+  // The .dev domain is the ONLY canonical base — never per-request origins.
+  const base = "https://desktop.entry-agents.dev";
   const redirectUri = `${base}/api/desktop/auth/callback`;
   const cfg = providerConfig(provider, redirectUri);
   const state = randomBytes(16).toString("hex");

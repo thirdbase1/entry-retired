@@ -25,7 +25,8 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code") ?? "";
   const state = req.nextUrl.searchParams.get("state") ?? "";
-  const base = process.env.BETTER_AUTH_URL ?? req.nextUrl.origin;
+  // Same canonical base as authorize — the .dev domain only.
+  const base = "https://desktop.entry-agents.dev";
 
   const fail = (msg: string, status = 400) =>
     NextResponse.redirect(`${base}/desktop/device?error=${encodeURIComponent(msg)}`);
