@@ -611,3 +611,6 @@ Do the study BEFORE writing the loop: docs/tool-catalog.md + docs/tool-execution
 
 ## Lesson 60 — 100% distillation method (post "big lie" correction)
 Never re-type or approximate token sheets: vendor the real CSS verbatim (`src/dsh-theme/` = design-platform/base/scrollbar/focus/corner-shape/gradient-shadow-text) and import them first; app CSS only adds layout + app-specific classes. Port component structure 1:1 (AppFrame 248px sidebar + center col, ConversationRoot 76px header, --dsh-chat-content-width column, MessageItem right-aligned radius-20 specific-bubble, ui-tool DisclosureRow 34px send / radius-28 panel composer). Verify each piece by DOM-geometry audit (getBoundingClientRect + computed styles via CDP) — vision backends can 504, geometry cannot lie.
+
+## Lesson 61 — Tauri event harness ids
+In Tauri v2, `plugin:event|listen` args carry `handler` = the transformCallback id; events are delivered by calling the `window._<handlerId>` global with `{event, id, payload}`. A preview stub must key event names by `args.handler`, not its own counter — otherwise emitted frames silently vanish.

@@ -93,6 +93,23 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
     return () => off?.();
   }, []);
 
+  // Esc rejects a pending approval at the document level — the approval card
+  // replaces the textarea, so its keydown handler is not mounted to catch it.
+  useEffect(() => {
+    if (!pending) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        decideRef.current("reject");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        decideRef.current("allow");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pending]);
+
   // The durable projection is the source of truth; reload when a turn settles.
   useEffect(() => {
     if (!workspace) return;
@@ -136,22 +153,23 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
   }
 
   async function decide(decision: "allow" | "reject" | "cancel") {
-    if (!pending) return;
-    await answerApproval(sessionId, pending.callId, decision);
+    if (!pendingRef.current) return;
+    const callId = pendingRef.current.callId;
     setPending(null);
+    await answerApproval(sessionId, callId, decision);
   }
 
+  // Always-current bindings for the document-level key handlers.
+  const decideRef = useRef(decide);
+  const pendingRef = useRef<ApprovalRequest | null>(null);
+  decideRef.current = decide;
+  pendingRef.current = pending;
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Escape" && pending) {
-      e.preventDefault();
-      decide("reject");
-      return;
-    }
     // Enter submits; Shift+Enter is a newline. IME composition is respected.
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (pending) decide("allow");
-      else send();
+      send();
     }
   }
 
