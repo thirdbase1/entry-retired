@@ -30,6 +30,10 @@ export async function ensureTables() {
       state TEXT PRIMARY KEY,
       provider TEXT NOT NULL,
       device_code TEXT,
+      code_verifier TEXT,
       expires_at TIMESTAMPTZ NOT NULL
     )`;
+  // Older deployments created the table without the PKCE column.
+  await sql`ALTER TABLE desktop_oauth_states ADD COLUMN IF NOT EXISTS code_verifier TEXT`;
+  await sql`ALTER TABLE desktop_device_codes ADD COLUMN IF NOT EXISTS code_challenge TEXT`;
 }

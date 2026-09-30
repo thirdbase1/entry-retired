@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   const st = await sql`
     DELETE FROM desktop_oauth_states
     WHERE state = ${state} AND expires_at > now()
-    RETURNING provider, device_code`;
+    RETURNING provider, device_code, code_verifier`;
   const stateRow = st[0];
   if (!stateRow) return fail("Sign-in expired — restart from the app");
   const provider = stateRow.provider as ProviderId;
@@ -47,7 +47,12 @@ export async function GET(req: NextRequest) {
   try {
     // 2. Exchange + profile
     const cfg = providerConfig(provider, `${base}/api/desktop/auth/callback`);
-    const tokens = await exchangeCode(cfg, code, `${base}/api/desktop/auth/callback`);
+    const tokens = await exchangeCode(
+      cfg,
+      code,
+      `${base}/api/desktop/auth/callback`,
+      stateRow.code_verifier ?? undefined,
+    );
     if (!tokens.accessToken) return fail("Provider rejected the sign-in");
     const profile = await fetchProfile(provider, cfg, tokens.accessToken);
     if (!profile.email) {

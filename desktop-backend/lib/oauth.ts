@@ -34,7 +34,8 @@ export function providerConfig(id: ProviderId, redirectUri: string): ProviderCon
   }
   return {
     authorizeUrl: "https://vercel.com/oauth/authorize",
-    tokenUrl: "https://api.vercel.com/v2/oauth/access_token",
+    // Sign in with Vercel (OIDC): NOT the v2 management token endpoint.
+    tokenUrl: "https://api.vercel.com/login/oauth/token",
     profileUrl: "https://api.vercel.com/login/oauth/userinfo",
     scope: "openid email profile offline_access",
     clientId: () => process.env.VERCEL_CLIENT_ID ?? "",
@@ -43,14 +44,23 @@ export function providerConfig(id: ProviderId, redirectUri: string): ProviderCon
   };
 }
 
-export function buildAuthorizeUrl(cfg: ProviderConfig, redirectUri: string, state: string) {
+export function buildAuthorizeUrl(
+  cfg: ProviderConfig,
+  redirectUri: string,
+  state: string,
+  codeChallenge?: string,
+) {
   const url = new URL(cfg.authorizeUrl);
   url.searchParams.set("client_id", cfg.clientId());
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("scope", cfg.scope);
   url.searchParams.set("state", state);
-  if (cfg.acceptsJson) url.searchParams.set("response_type", "code");
-  else url.searchParams.set("response_type", "code");
+  url.searchParams.set("response_type", "code");
+  // Sign in with Vercel REQUIRES PKCE (S256) on the authorization request.
+  if (codeChallenge) {
+    url.searchParams.set("code_challenge", codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
+  }
   return url.toString();
 }
 
@@ -70,6 +80,7 @@ export async function exchangeCode(
   cfg: ProviderConfig,
   code: string,
   redirectUri: string,
+  codeVerifier?: string,
 ): Promise<{ accessToken: string; refreshToken?: string; scope?: string; expiresIn?: number }> {
   const body = new URLSearchParams({
     client_id: cfg.clientId(),
@@ -78,6 +89,7 @@ export async function exchangeCode(
     redirect_uri: redirectUri,
     grant_type: "authorization_code",
   });
+  if (codeVerifier) body.set("code_verifier", codeVerifier);
   const res = await fetch(cfg.tokenUrl, {
     method: "POST",
     headers: {

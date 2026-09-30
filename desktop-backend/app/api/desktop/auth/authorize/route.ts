@@ -45,11 +45,19 @@ export async function GET(req: NextRequest) {
   const cfg = providerConfig(provider, redirectUri);
   const state = randomBytes(16).toString("hex");
 
-  // Persist state → provider + device_code so the callback can trust it.
-  await sql`
-    INSERT INTO desktop_oauth_states (state, provider, device_code, expires_at)
-    VALUES (${state}, ${provider}, ${deviceCode}, now() + interval '10 minutes')
-    ON CONFLICT (state) DO NOTHING`;
+  // PKCE — Sign in with Vercel requires S256; GitHub accepts it harmlessly.
+  const codeVerifier = randomBytes(32).toString("base64url");
+  const codeChallenge = createHash("sha256")
+    .update(codeVerifier)
+    .digest("base64url");
 
-  return NextResponse.redirect(buildAuthorizeUrl(cfg, redirectUri, state));
+  // Persist state → provider + device_code + verifier so the callback can trust it.
+  await sql`
+    INSERT INTO desktop_oauth_states (state, provider, device_code, code_verifier, expires_at)
+    VALUES (${state}, ${provider}, ${deviceCode}, ${codeVerifier}, now() + interval '10 minutes')
+    ON CONFLICT (state)
+    DO UPDATE SET provider = EXCLUDED.provider, device_code = EXCLUDED.device_code,
+                  code_verifier = EXCLUDED.code_verifier, expires_at = EXCLUDED.expires_at`;
+
+  return NextResponse.redirect(buildAuthorizeUrl(cfg, redirectUri, state, codeChallenge));
 }

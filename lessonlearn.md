@@ -574,3 +574,8 @@ backend only, entry-agents untouched:
 - Tauri Windows release build WITHOUT #![windows_subsystem="windows"] in main.rs spawns a visible black console window; closing it kills the app. Always set it.
 - GitHub OAuth: even with user:email scope the profile email can be private - never fail sign-in on missing email; fall back to a stable synthetic identity (upstream links by provider account id).
 - A product page means a real marketing/download page (hero, features, per-OS download cards from the GitHub release API) - not an API listing.
+
+## Lesson 51 - Sign in with Vercel is OIDC+PKCE, not the v2 management API
+- Token endpoint is https://api.vercel.com/login/oauth/token (NOT /v2/oauth/access_token, which is the management API and rejects authorization codes).
+- Authorization requires PKCE S256: generate verifier at authorize, persist beside the state row, send code_verifier at exchange. GitHub tolerates PKCE too - one code path for both providers.
+- Vercel access tokens live 1h; refresh_token (offline_access) rotates on every use - store and rotate.
