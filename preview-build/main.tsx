@@ -15,33 +15,53 @@ const eventNames = new Map<number, string>();
 const sessionEvents = [
   {
     kind: "turn",
+    id: "t1",
     status: "completed",
     at: Date.now() - 120000,
     records: [
-      { kind: "message.user", data: { text: "Run the test suite and fix the failing auth tests." } },
-      { kind: "tool.started", data: { message: "Running bash: cargo test" } },
-      { kind: "approval/asked", data: { tool: "bash" } },
-      { kind: "approval/decided", data: { outcome: "allowed-once" } },
+      { kind: "message.user", seq: 1, data: { text: "Run the test suite and fix the failing auth tests." } },
+      {
+        kind: "message.assistant",
+        seq: 2,
+        ignorable: false,
+        data: {
+          text: null,
+          toolCalls: [{ id: "c1", name: "bash", arguments: "{\"cmd\":\"cargo test\"}" }],
+        },
+      },
+      { kind: "tool.started", seq: 3, ignorable: true, data: { message: "Running bash" } },
+      { kind: "approval/asked", seq: 4, data: { callId: "c1", tool: "bash", reason: "Command needs approval: cargo test" } },
+      { kind: "approval/decided", seq: 5, data: { callId: "c1", outcome: "allowed-once" } },
       {
         kind: "message.tool",
-        data: { text: "running 53 tests\ntest result: ok. 53 passed; 0 failed; 0 ignored\n\nfinished in 0.84s" },
+        seq: 6,
+        data: { callId: "c1", text: "running 53 tests\ntest result: ok. 53 passed; 0 failed; 0 ignored\n\nfinished in 0.84s" },
       },
       {
         kind: "message.assistant",
+        seq: 7,
         data: {
           text: "All 53 tests pass. The auth failures came from a race in the session refresh path: a transient backend error was clearing the local session instead of degrading it. I fixed the branch so only a real 401 signs you out.",
-          toolCalls: [{ name: "bash" }, { name: "read_file" }],
+          toolCalls: [],
         },
       },
     ],
   },
   {
     kind: "turn",
+    id: "t2",
     status: "running",
     at: Date.now() - 8000,
     records: [
-      { kind: "message.user", data: { text: "Now wire the sign-out revocation to the server." } },
-      { kind: "tool.started", data: { message: "Running read_file: src-tauri/src/backend.rs" } },
+      { kind: "message.user", seq: 8, data: { text: "Now wire the sign-out revocation to the server." } },
+      {
+        kind: "message.assistant",
+        seq: 9,
+        data: {
+          text: null,
+          toolCalls: [{ id: "c2", name: "read_file", arguments: "{\"path\":\"src-tauri/src/backend.rs\"}" }],
+        },
+      },
     ],
   },
 ];

@@ -363,13 +363,101 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
   );
 }
 
+/**
+ * A process node — the DSH projection fold, ported 1:1 from the record
+ * contract the session log emits:
+ *   message.user      {text}
+ *   message.assistant {text, toolCalls:[{id,name,arguments}]}
+ *   message.tool      {callId, text}
+ *   approval/asked    {callId, tool, reason}
+ *   approval/decided  {callId, outcome}
+ * Stream frames (tool.started/tool.finished/model.reply/…) are `ignorable`
+ * audit-only events: the live status renders them, the transcript does not.
+ */
+type Node =
+  | { kind: "user"; text: string }
+  | { kind: "assistant"; text: string; calls: { id: string; name: string; arguments: string }[] }
+  | { kind: "call"; id: string; name: string; arguments: string; text?: string; failed?: boolean }
+  | { kind: "approval"; callId: string; tool: string; reason: string; outcome?: string };
+
+function foldTurn(records: TurnRecord[]): Node[] {
+  const nodes: Node[] = [];
+  const callIndex = new Map<string, number>();
+
+  for (const r of records) {
+    if (r.ignorable) continue; // stream-only frame
+    const d = (r.data ?? {}) as Record<string, unknown>;
+    switch (r.kind) {
+      case "message.user":
+        nodes.push({ kind: "user", text: String(d.text ?? "") });
+        break;
+      case "message.assistant": {
+        const calls = ((d.toolCalls as unknown[]) ?? []).map((c) => {
+          const call = c as { id?: string; name?: string; arguments?: unknown };
+          return {
+            id: String(call.id ?? ""),
+            name: String(call.name ?? "tool"),
+            arguments:
+              typeof call.arguments === "string"
+                ? call.arguments
+                : JSON.stringify(call.arguments ?? {}),
+          };
+        });
+        const text = String(d.text ?? "");
+        if (text) nodes.push({ kind: "assistant", text, calls: [] });
+        // Each call gets its own node; results attach to it by callId.
+        for (const call of calls) {
+          callIndex.set(call.id, nodes.length);
+          nodes.push({ kind: "call", ...call });
+        }
+        break;
+      }
+      case "message.tool": {
+        const id = String(d.callId ?? "");
+        const text = String(d.text ?? "");
+        const failed = text.startsWith("REFUSED:") || text.startsWith("APPROVAL_");
+        const at = callIndex.get(id);
+        if (at !== undefined) {
+          nodes[at] = { ...(nodes[at] as Extract<Node, { kind: "call" }>), text, failed };
+        } else {
+          nodes.push({ kind: "call", id, name: "tool", arguments: "{}", text, failed });
+        }
+        break;
+      }
+      case "approval/asked":
+        nodes.push({
+          kind: "approval",
+          callId: String(d.callId ?? ""),
+          tool: String(d.tool ?? ""),
+          reason: String(d.reason ?? ""),
+        });
+        break;
+      case "approval/decided": {
+        const id = String(d.callId ?? "");
+        const at = nodes.findIndex((n) => n.kind === "approval" && callId(n) === id);
+        if (at >= 0) {
+          nodes[at] = { ...(nodes[at] as Extract<Node, { kind: "approval" }>), outcome: String(d.outcome ?? "") };
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return nodes;
+}
+
+function callId(n: Node): string {
+  return n.kind === "approval" ? n.callId : "";
+}
+
 /** One turn: a TurnProcessNodeView trigger header row that folds the turn's records. */
 function TurnView({ turn }: { turn: TurnProjection }) {
   const [open, setOpen] = useState(turn.status === "running");
-  const records = turn.records ?? [];
-  const assistant = records.filter((r) => r.kind === "model.reply");
-  const tools = records.filter((r) => r.kind?.startsWith("tool."));
-  const approvals = records.filter((r) => r.kind?.startsWith("approval"));
+  const nodes = foldTurn(turn.records ?? []);
+  const calls = nodes.filter((n) => n.kind === "call");
+  const approvals = nodes.filter((n) => n.kind === "approval");
+  const lastAssistant = [...nodes].reverse().find((n) => n.kind === "assistant");
   const status = turn.status ?? "unknown";
 
   return (
@@ -386,7 +474,7 @@ function TurnView({ turn }: { turn: TurnProjection }) {
         </svg>
         <span className="turn-status">{status}</span>
         <span className="turn-meta">
-          {tools.length} tool{tools.length === 1 ? "" : "s"}
+          {calls.length} tool{calls.length === 1 ? "" : "s"}
           {approvals.length > 0 && ` · ${approvals.length} approval`}
           {turn.at ? ` · ${new Date(turn.at).toLocaleTimeString()}` : ""}
         </span>
@@ -394,79 +482,61 @@ function TurnView({ turn }: { turn: TurnProjection }) {
 
       {open && (
         <div className="turn-body">
-          {records.map((r, i) => (
-            <RecordView key={i} record={r} />
+          {nodes.map((n, i) => (
+            <NodeView key={i} node={n} />
           ))}
         </div>
       )}
 
-      {!open && assistant.length > 0 && (
-        <div className="turn-preview">
-          {String(assistant[assistant.length - 1]?.data?.message ?? "").slice(0, 160)}
-        </div>
+      {!open && lastAssistant?.kind === "assistant" && (
+        <div className="turn-preview">{lastAssistant.text.slice(0, 160)}</div>
       )}
     </div>
   );
 }
 
-function RecordView({ record }: { record: TurnRecord }) {
+function NodeView({ node }: { node: Node }) {
   const [open, setOpen] = useState(false);
-  const message = String(record.data?.message ?? "");
 
-  if (record.kind === "message.user") {
+  if (node.kind === "user") {
     return (
       <div className="user-row" data-part="turn-trigger">
-        <div className="user-bubble">{String(record.data?.text ?? "")}</div>
+        <div className="user-bubble">{node.text}</div>
       </div>
     );
   }
-  if (record.kind === "message.assistant") {
-    const calls = (record.data?.toolCalls as unknown[]) ?? [];
+  if (node.kind === "assistant") {
     return (
       <div className="rec-assistant" data-part="response">
-        {record.data?.text ? <p>{String(record.data.text)}</p> : null}
-        {calls.length > 0 && (
-          <div className="rec-calls">
-            {calls.map((c, i) => (
-              <ToolRow key={i} name={(c as { name?: string }).name ?? "tool"} />
-            ))}
-          </div>
-        )}
+        <p>{node.text}</p>
       </div>
     );
   }
-  if (record.kind === "message.tool") {
-    const text = String(record.data?.text ?? "");
-    const isErr = text.startsWith("REFUSED") || text.startsWith("APPROVAL_REQUIRED");
+  if (node.kind === "call") {
+    // DSH ioCard summary: first line of the result (or of the arguments when
+    // the result has not settled yet).
+    const summarySrc = node.text ?? node.arguments;
+    const summary = summarySrc.split("\n")[0];
     return (
       <div className="rec-calls">
         <ToolRow
-          name="tool result"
-          summary={text.split("\n")[0]}
-          error={isErr}
-          expandable
+          name={node.name}
+          summary={summary}
+          error={node.failed}
+          expandable={node.text !== undefined}
           open={open}
           onToggle={() => setOpen((v) => !v)}
-          body={open ? text : undefined}
+          body={open ? node.text : undefined}
         />
       </div>
     );
   }
-  if (record.kind?.startsWith("approval")) {
-    const outcome = String(record.data?.outcome ?? "asked");
-    return (
-      <div className={`rec-approval ${outcome}`}>
-        {record.kind === "approval/asked"
-          ? `approval requested · ${String(record.data?.tool ?? "")}`
-          : `approval ${outcome}`}
-      </div>
-    );
-  }
-
+  // approval node: asked → decided pair, folded into one row
   return (
-    <div className="rec-line">
-      <span>{record.kind}</span>
-      {message && <span>{message}</span>}
+    <div className={`rec-approval ${node.outcome ?? "asked"}`}>
+      {node.outcome
+        ? `approval ${node.outcome} · ${node.tool}`
+        : `approval requested · ${node.tool}`}
     </div>
   );
 }
