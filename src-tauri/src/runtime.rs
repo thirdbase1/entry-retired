@@ -1,7 +1,8 @@
 use serde::Serialize;
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use tokio::{
     process::Command,
@@ -17,6 +18,9 @@ const READ_MAX_LINE_CHARS: usize = 2_000;
 #[derive(Clone)]
 pub struct LocalRuntimePlugin {
     workspace: Arc<PathBuf>,
+    /// DSH fs-observation-policy port: files observed via read_file, allowed
+    /// to be written/edited afterwards (read-before-write freshness gate).
+    observed: Arc<Mutex<HashSet<PathBuf>>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -32,6 +36,7 @@ impl LocalRuntimePlugin {
     pub fn new(workspace: PathBuf) -> Self {
         Self {
             workspace: Arc::new(workspace),
+            observed: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 
@@ -45,7 +50,20 @@ impl LocalRuntimePlugin {
             "filesystem.write",
             "process.spawn",
             "workspace.inspect",
+            "fs.search",
         ]
+    }
+
+    /// DSH ConfinedArgv port: sandbox enforcement is a *reported fact*.
+    /// The desktop runner confines effects by workspace path resolution +
+    /// approval gates; report `partial` honestly (no kernel-level
+    /// confinement on Windows; Landlock/Seatbelt are future work).
+    pub fn enforcement(&self) -> &'static str {
+        if cfg!(target_os = "windows") {
+            "partial"
+        } else {
+            "partial"
+        }
     }
 
     pub fn workspace(&self) -> &Path {
@@ -82,6 +100,10 @@ impl LocalRuntimePlugin {
 
     pub async fn read_file(&self, path: &str, offset: i64, limit: usize) -> Result<String, String> {
         let path = self.resolve(path)?;
+        self.observed
+            .lock()
+            .expect("observed lock")
+            .insert(path.clone());
         let bytes = tokio::fs::read(&path).await.map_err(|e| e.to_string())?;
         if bytes.iter().take(8192).any(|b| *b == 0) {
             return Err("Binary files are not readable through read_file.".into());
@@ -130,6 +152,15 @@ impl LocalRuntimePlugin {
 
     pub async fn write_file(&self, path: &str, content: &str) -> Result<String, String> {
         let path = self.resolve(path)?;
+        // DSH fs-observation-policy port: write/edit freshness is enforced by
+        // the runtime gate — the file must have been read (or not exist) before
+        // an overwrite. Fail closed with an explicit reason.
+        if path.exists() && !self.observed.lock().expect("observed lock").contains(&path) {
+            return Err(
+                "Write refused: read the file with read_file before overwriting it (read-before-write policy)."
+                    .into(),
+            );
+        }
         tokio::fs::write(&path, content)
             .await
             .map_err(|e| e.to_string())?;
@@ -138,6 +169,12 @@ impl LocalRuntimePlugin {
 
     pub async fn edit_file(&self, path: &str, old: &str, new: &str) -> Result<String, String> {
         let path = self.resolve(path)?;
+        if !self.observed.lock().expect("observed lock").contains(&path) {
+            return Err(
+                "Edit refused: read the file with read_file before editing it (read-before-write policy)."
+                    .into(),
+            );
+        }
         let content = tokio::fs::read_to_string(&path)
             .await
             .map_err(|e| e.to_string())?;
@@ -196,6 +233,257 @@ impl LocalRuntimePlugin {
         })
     }
 
+    /// Workspace directory listing (DSH fs discovery port).
+    pub fn list_dir(&self, path: Option<&str>) -> Result<String, String> {
+        let dir = match path {
+            None | Some("") => (*self.workspace).clone(),
+            Some(p) => {
+                let resolved = self.resolve(p)?;
+                if !resolved.is_dir() {
+                    return Err(format!("Not a directory: {p}"));
+                }
+                resolved
+            }
+        };
+        let mut entries: Vec<String> = std::fs::read_dir(&dir)
+            .map_err(|e| e.to_string())?
+            .filter_map(|e| e.ok())
+            .map(|e| {
+                let name = e.file_name().to_string_lossy().to_string();
+                if e.path().is_dir() {
+                    format!("{name}/")
+                } else {
+                    name
+                }
+            })
+            .collect();
+        entries.sort();
+        if entries.len() > 500 {
+            entries.truncate(500);
+            entries.push("[truncated at 500 entries]".into());
+        }
+        Ok(if entries.is_empty() {
+            String::from("(empty directory)")
+        } else {
+            entries.join("\n")
+        })
+    }
+
+    /// Recursive glob (DSH fs-search port): patterns like `**/*.rs`, limited
+    /// depth, workspace-relative results.
+    pub fn glob(&self, pattern: &str) -> Result<String, String> {
+        if pattern.contains("..")
+            || pattern.starts_with('/')
+            || pattern.contains(':') && pattern.len() == 2
+        {
+            return Err("Pattern must be workspace-relative.".into());
+        }
+        let mut matches: Vec<String> = Vec::new();
+        let (dir_part, file_pat) = match pattern.rsplit_once('/') {
+            Some((d, f)) => (d.to_string(), f.to_string()),
+            None => (String::new(), pattern.to_string()),
+        };
+        let base = if dir_part.is_empty() {
+            (*self.workspace).clone()
+        } else {
+            self.resolve(&dir_part)?
+        };
+        let matcher = glob_matcher(&file_pat);
+        let mut stack = vec![base.clone()];
+        let mut visited = 0usize;
+        while let Some(dir) = stack.pop() {
+            visited += 1;
+            if visited > 5_000 || matches.len() >= 200 {
+                break;
+            }
+            let Ok(read) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in read.filter_map(|e| e.ok()) {
+                let p = entry.path();
+                if p.is_dir() {
+                    // skip heavy/vendor dirs
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if !matches!(name.as_str(), ".git" | "node_modules" | "target" | "dist") {
+                        stack.push(p);
+                    }
+                } else if matcher(&entry.file_name().to_string_lossy()) {
+                    let rel = p
+                        .strip_prefix(self.workspace.as_path())
+                        .unwrap_or(&p)
+                        .to_string_lossy()
+                        .to_string();
+                    matches.push(rel);
+                }
+            }
+        }
+        matches.sort();
+        if matches.len() >= 200 {
+            matches.push("[capped at 200 matches]".into());
+        }
+        Ok(if matches.is_empty() {
+            String::from("(no matches)")
+        } else {
+            matches.join("\n")
+        })
+    }
+
+    /// Text search (DSH grep port): literal-substring scan of text files,
+    /// byte-capped, workspace-relative results.
+    pub fn grep(&self, pattern: &str, file_glob: Option<&str>) -> Result<String, String> {
+        if pattern.is_empty() {
+            return Err("pattern is required".into());
+        }
+        let matcher = file_glob.map(glob_matcher);
+        let mut results: Vec<String> = Vec::new();
+        let mut stack = vec![(*self.workspace).clone()];
+        let mut visited = 0usize;
+        while let Some(dir) = stack.pop() {
+            visited += 1;
+            if visited > 5_000 || results.len() >= 150 {
+                break;
+            }
+            let Ok(read) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in read.filter_map(|e| e.ok()) {
+                let p = entry.path();
+                if p.is_dir() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if !matches!(name.as_str(), ".git" | "node_modules" | "target" | "dist") {
+                        stack.push(p);
+                    }
+                } else {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if let Some(m) = &matcher {
+                        if !m(&name) {
+                            continue;
+                        }
+                    }
+                    if let Ok(meta) = p.metadata() {
+                        if meta.len() > 1_048_576 {
+                            continue; // skip >1MB
+                        }
+                    }
+                    let Ok(content) = std::fs::read(&p) else {
+                        continue;
+                    };
+                    if content.contains(&0u8) {
+                        continue; // binary
+                    }
+                    let text = String::from_utf8_lossy(&content);
+                    let rel = p
+                        .strip_prefix(self.workspace.as_path())
+                        .unwrap_or(&p)
+                        .to_string_lossy()
+                        .to_string();
+                    for (i, line) in text.lines().enumerate().take(5_000) {
+                        if line.contains(pattern) {
+                            results.push(format!("{}:{}: {}", rel, i + 1, line.trim()));
+                            if results.len() >= 150 {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if results.len() >= 150 {
+            results.push("[capped at 150 matches]".into());
+        }
+        Ok(if results.is_empty() {
+            String::from("(no matches)")
+        } else {
+            results.join("\n")
+        })
+    }
+}
+
+/// Simple glob: `*` within a segment, `?` single char; `**` is not supported
+/// at this layer (callers split directories before).
+fn glob_matcher(pattern: &str) -> impl Fn(&str) -> bool + '_ {
+    let pattern = pattern.to_string();
+    move |name: &str| {
+        let p: Vec<char> = pattern.chars().collect();
+        let n: Vec<char> = name.chars().collect();
+        fn rec(p: &[char], n: &[char]) -> bool {
+            if p.is_empty() {
+                return n.is_empty();
+            }
+            match p[0] {
+                '*' => {
+                    for i in 0..=n.len() {
+                        if rec(&p[1..], &n[i..]) {
+                            return true;
+                        }
+                    }
+                    false
+                }
+                '?' => !n.is_empty() && rec(&p[1..], &n[1..]),
+                c => !n.is_empty() && n[0] == c && rec(&p[1..], &n[1..]),
+            }
+        }
+        rec(&p, &n)
+    }
+}
+
+/// Spawn a bash command without waiting (background-job path). Output pipes
+/// are kept; the caller polls the child and streams bytes into the job ring.
+pub async fn spawn_bash(
+    runtime: &LocalRuntimePlugin,
+    command: &str,
+    cwd: Option<&str>,
+) -> Result<tokio::process::Child, String> {
+    if command_needs_approval(command) {
+        return Err(
+            "APPROVAL_REQUIRED: this command matches Entry's dangerous/sensitive command policy."
+                .into(),
+        );
+    }
+    let working_dir = match cwd {
+        None | Some("") => runtime.workspace.as_path().to_path_buf(),
+        Some(value) => runtime.resolve_workspace_dir(value)?,
+    };
+    Command::new(if cfg!(windows) { "cmd" } else { "bash" })
+        .args(if cfg!(windows) {
+            vec!["/C", command]
+        } else {
+            vec!["-c", command]
+        })
+        .current_dir(working_dir)
+        .env("ENTRY_DESKTOP_WORKSPACE", runtime.workspace.as_os_str())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|e| e.to_string())
+}
+
+/// Drain a finished child's pipes (best effort) into one string.
+pub async fn collect_child_output(child: &mut tokio::process::Child) -> String {
+    use tokio::io::AsyncReadExt;
+    let mut out = String::new();
+    if let Some(mut stdout) = child.stdout.take() {
+        let mut buf = Vec::new();
+        let _ = stdout.read_to_end(&mut buf).await;
+        out.push_str(&String::from_utf8_lossy(&buf));
+    }
+    if let Some(mut stderr) = child.stderr.take() {
+        let mut buf = Vec::new();
+        let _ = stderr.read_to_end(&mut buf).await;
+        if !buf.is_empty() {
+            out.push_str("\n[stderr]\n");
+            out.push_str(&String::from_utf8_lossy(&buf));
+        }
+    }
+    if out.len() > MAX_OUTPUT {
+        out.truncate(MAX_OUTPUT);
+        out.push_str("\n[output truncated]");
+    }
+    out
+}
+
+impl LocalRuntimePlugin {
     fn resolve_workspace_dir(&self, requested: &str) -> Result<PathBuf, String> {
         let path = Path::new(requested);
         if path.is_absolute() {

@@ -369,14 +369,16 @@ struct ActiveRun {
 /// App-wide registry of live runs + background jobs.
 struct AgentHost {
     runs: Mutex<std::collections::HashMap<String, ActiveRun>>,
-    jobs: jobs::JobRegistry,
+    /// Shared background-job registry (DSH jobs contract): `<kind>-N` ids,
+    /// owner-session fencing, output ring. Non-durable by design.
+    jobs: std::sync::Arc<crate::jobs::JobRegistry>,
 }
 
 impl AgentHost {
     fn new() -> Self {
         Self {
             runs: Mutex::new(std::collections::HashMap::new()),
-            jobs: jobs::JobRegistry::new(),
+            jobs: std::sync::Arc::new(crate::jobs::JobRegistry::new()),
         }
     }
 }
@@ -433,6 +435,7 @@ async fn run_agent(
     let deps = std::sync::Arc::new(agent_loop::AgentDeps {
         approvals,
         interrupt,
+        jobs: host.jobs.clone(),
     });
     let session = crate::backend::BackendSession::load(&app);
     let result = agent_loop::run(

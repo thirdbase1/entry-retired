@@ -603,3 +603,8 @@ Test temp dirs keyed only by pid+millis collide when parallel tests open Session
 
 ## Lesson 57
 Product name is "Entry" (user reversed the Ventry rename). Keep it in: Workspace.tsx, LoginScreen.tsx, styles.css comments, lib.rs docstring, tauri.conf.json productName (drives installer name Entry_x.y.z_*), site pages. Lib crate name ventry_lib stays — internal only, not user-facing.
+
+## Lesson 58
+DSH tool-execution-pipeline port complete in agent_loop/runtime: discovery tools (list_dir/glob/grep — glob/grep skip .git|node_modules|target|dist, caps 200/150, no ripgrep dependency so they work on stock Windows), read-before-write freshness gate (runtime.observed HashSet populated by read_file; write/edit fail closed with explicit reason — the fs-observation-policy made non-optional), background bash through the shared JobRegistry (bash run_in_background admits bash-N, output streams to ring, job_list/job_output/job_kill are model tools; kill is a request), sandbox enforcement reported honestly as "partial" (ConfinedArgv fact, not pretense).
+## Lesson 59
+Do the study BEFORE writing the loop: docs/tool-catalog.md + docs/tool-execution-pipeline.md name the exact pre-execute waterfall order (pre-execute → monotonic guards → around dispatch → tool body → post-execute → finalize → tools/result) and the real tool surface (bash/pwsh, fs read/write/edit/read_image, glob/grep, job_*, terminal_*, subagent). The approval gate sits in pre-execute; args deliberately never enter approval events.
