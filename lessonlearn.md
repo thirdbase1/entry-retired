@@ -543,3 +543,10 @@ backend only, entry-agents untouched:
   → /api/desktop/chat with Bearer session token; PluginRegistry::new(session, model)
 - Tauri command params are camelCase from JS (modelId → model_id field)
 - tauri-plugin-opener needs BOTH npm pkg and Cargo dep + .plugin(init())
+
+## Lesson 45 — Cross-platform CI (v0.1.0 release)
+- Rust tests with Unix path assumptions fail on Windows: canonicalize() yields \\?\ verbatim prefixes; separators normalize; temp dirs are 8.3 names. Compare PathBuf forms, never display strings.
+- Windows runners have Git Bash but it mangles 8.3 temp cwds — use cmd /C or spawn the exe directly.
+- child.kill() on Windows kills only the direct child; cmd /C grandchild processes survive. Spawn the real executable for timeout tests (ping -n as sleep).
+- macOS temp dirs are symlinked (/var -> /private/var); compare via canonicalize.
+- Artifacts: NSIS .exe + .msi, .dmg, .AppImage + .deb + .rpm.
