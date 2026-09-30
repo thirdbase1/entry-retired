@@ -41,7 +41,7 @@ const sessionEvents = [
         kind: "message.assistant",
         seq: 7,
         data: {
-          text: "All 53 tests pass. The auth failures came from a race in the session refresh path: a transient backend error was clearing the local session instead of degrading it. I fixed the branch so only a real 401 signs you out.",
+          text: "All **53 tests pass**. The auth failures came from a race in the session refresh path:\n\n- A transient backend error was clearing the local session\n- Instead of degrading it\n\nI fixed the branch so only a real `401` signs you out.\n\n```rust\nfn main() { println!(\"hello\"); }\n```",
           toolCalls: [],
         },
       },

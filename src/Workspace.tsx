@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { Markdown } from "./Markdown";
 import {
   answerApproval,
   interruptAgent,
@@ -508,7 +509,7 @@ function NodeView({ node }: { node: Node }) {
   if (node.kind === "assistant") {
     return (
       <div className="rec-assistant" data-part="response">
-        <p>{node.text}</p>
+        <Markdown>{node.text}</Markdown>
       </div>
     );
   }

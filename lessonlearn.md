@@ -614,3 +614,6 @@ Never re-type or approximate token sheets: vendor the real CSS verbatim (`src/ds
 
 ## Lesson 61 — Tauri event harness ids
 In Tauri v2, `plugin:event|listen` args carry `handler` = the transformCallback id; events are delivered by calling the `window._<handlerId>` global with `{event, id, payload}`. A preview stub must key event names by `args.handler`, not its own counter — otherwise emitted frames silently vanish.
+
+## Lesson 62 — DSH markdown port
+Vendor ui-primitives' MarkdownText.module.css + CodeBlock.module.css verbatim (strip `:global()`), render with the same remark-parse/remark-gfm mdast mapping, and emit the sheets' own class names (.markdown, .block.md-code-block, .bannerWrap/.banner/.infostring/.content). Code block chrome relies on --dsw-radius-lg from base.css — class names must match the sheet, not the semantic alias (md-code-block alone resolves nothing).

@@ -11,6 +11,8 @@
 
 @import "./dsh-theme/base.css";
 @import "./dsh-theme/design-platform.css";
+@import "./dsh-theme/markdown-text.module.css";
+@import "./dsh-theme/code-block.module.css";
 @import "./dsh-theme/gradient-shadow-text.css";
 @import "./dsh-theme/scrollbar.css";
 @import "./dsh-theme/focus.css";
