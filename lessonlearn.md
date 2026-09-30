@@ -555,3 +555,8 @@ backend only, entry-agents untouched:
 - Tauri v2 plugins are permission-gated: without src-tauri/capabilities/default.json granting opener:allow-open-url, openUrl() silently denies and the browser never launches.
 - React hooks-order violation (useEffect after conditional return) crashes with "rendered fewer hooks" the moment the user signs in - move every hook above conditionals.
 - npm lockfiles inherit ~/.npmrc registry mirrors - never ship machine-local registry URLs (see lesson from desktop-backend).
+
+## Lesson 47 - Backend UI + sign-in press
+- Device approval page and backend dashboard share one token sheet (globals.css): Vercel palette, DSH radius law (xl20 cards, panel28 approval card), hairline #262626 borders.
+- Browser must open ONLY after an explicit user press on Sign in - prepare the device code first, open on click, never auto-launch.
+- Copy the SAME entry.svg (squircle + 3-bar glyph) to desktop public/logos AND backend public - one brand asset everywhere.

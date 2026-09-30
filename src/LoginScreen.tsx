@@ -11,17 +11,13 @@ interface LoginScreenProps {
 }
 
 /**
- * Truly seamless device-flow login:
- * 1. The flow starts AUTOMATICALLY on mount — no button press.
- * 2. The system browser opens AUTOMATICALLY with the approval page.
- * 3. Polling connects the app the moment approval lands.
- * Any failure keeps a one-click retry visible; nothing else is manual.
+ * Two-step sign-in: the app prepares a device code on mount, but the
+ * browser launches ONLY when the user presses "Sign in". After the press,
+ * everything is automatic: browser opens, polling connects on approval.
  */
 export function LoginScreen({ onSignedIn }: LoginScreenProps) {
   const [start, setStart] = useState<DeviceStart | null>(null);
-  const [state, setState] = useState<
-    "starting" | "waiting" | "expired" | "error"
-  >("starting");
+  const [phase, setPhase] = useState<"idle" | "starting" | "waiting" | "expired" | "error">("idle");
   const [error, setError] = useState("");
   const pollRef = useRef<number | null>(null);
   const begunRef = useRef(false);
@@ -36,11 +32,11 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
     if (begunRef.current) return;
     begunRef.current = true;
     try {
-      setState("waiting");
+      setPhase("starting");
       const s = await deviceStart();
       setStart(s);
-      // Launch the browser right away; if the opener is blocked we still
-      // show the code + a manual-reopen button, never a dead end.
+      setPhase("waiting");
+      // Browser launches here — only after the user pressed Sign in.
       openInBrowser(s.verifyUrl).catch(() => {});
       const interval = Math.max(2, s.intervalSecs ?? 3) * 1000;
       pollRef.current = window.setInterval(async () => {
@@ -52,7 +48,7 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
           } else if (result.status === "expired" || result.status === "denied") {
             if (pollRef.current) window.clearInterval(pollRef.current);
             begunRef.current = false;
-            setState("expired");
+            setPhase("expired");
           }
         } catch {
           // transient network error: keep polling
@@ -60,34 +56,45 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
       }, interval);
     } catch (e) {
       setError(String(e));
-      setState("error");
+      setPhase("error");
       begunRef.current = false;
     }
   }
 
-  // Auto-start once on mount.
-  useEffect(() => {
-    begin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  function reset() {
+    if (pollRef.current) window.clearInterval(pollRef.current);
+    pollRef.current = null;
+    begunRef.current = false;
+    setStart(null);
+    setError("");
+    setPhase("idle");
+  }
 
   return (
     <div className="login-screen">
       <div className="login-card">
         <img src="/logos/entry.svg" alt="Entry" className="login-logo" />
         <h1>Sign in to Entry</h1>
-        <p className="login-sub">
-          Your browser is opening to approve access — the app connects
-          automatically the moment you approve.
-        </p>
+        {phase === "idle" && (
+          <>
+            <p className="login-sub">
+              Sign in to connect this desktop to your Entry account. Your
+              browser will open to approve access — the app connects
+              automatically the moment you approve.
+            </p>
+            <button className="btn-primary login-btn" onClick={begin}>
+              Sign in
+            </button>
+          </>
+        )}
 
-        {state === "starting" && (
+        {phase === "starting" && (
           <div className="login-waiting">
             <span className="spinner" /> Starting sign-in…
           </div>
         )}
 
-        {state === "waiting" && start && (
+        {phase === "waiting" && start && (
           <>
             <div className="device-code">{start.userCode}</div>
             <p className="login-sub">
@@ -103,23 +110,23 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
             >
               Reopen browser window
             </button>
+            <button className="btn-ghost login-btn" onClick={reset}>
+              Cancel
+            </button>
           </>
         )}
 
-        {(state === "expired" || state === "error") && (
+        {(phase === "expired" || phase === "error") && (
           <>
-            {state === "expired" && (
-              <div className="login-error">Code expired — tap to retry.</div>
+            {phase === "expired" && (
+              <div className="login-error">Code expired — press Sign in to retry.</div>
             )}
-            {state === "error" && <div className="login-error">{error}</div>}
-            <button
-              className="btn-primary login-btn"
-              onClick={() => {
-                setError("");
-                begin();
-              }}
-            >
-              Try again
+            {phase === "error" && <div className="login-error">{error}</div>}
+            <button className="btn-primary login-btn" onClick={begin}>
+              Sign in
+            </button>
+            <button className="btn-ghost login-btn" onClick={reset}>
+              Back
             </button>
           </>
         )}

@@ -1,10 +1,113 @@
-:root { color-scheme: dark; }
+/* Entry Desktop backend — design tokens.
+   Dark-first, Vercel palette, DSH radius/typography scale. */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #0a0a0a;
+  --layer-1: #111111;
+  --layer-2: #171717;
+  --layer-3: #1f1f1f;
+  --border: #262626;
+  --border-soft: #232323;
+
+  /* Text */
+  --fg: #ededed;
+  --fg-muted: #a1a1a1;
+  --fg-faint: #666666;
+
+  /* Brand + status (Vercel) */
+  --accent: #0070f3;
+  --accent-hover: #3291ff;
+  --success: #0cce6b;
+  --error: #ee0000;
+  --warning: #f5a623;
+
+  /* Radius scale — DSH law: xs4 sm8 md12 lg16 xl20 panel28 */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-panel: 28px;
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.28);
+
+  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  background: #0a0a0a;
-  color: #ededed;
-  font-family: ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
+
+a { color: var(--accent); text-decoration: none; font-weight: 500; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-style: dotted; }
+
+.shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--layer-1);
+}
+.topbar img { width: 26px; height: 26px; border-radius: var(--r-sm); }
+.topbar .name { font-weight: 600; letter-spacing: -0.2px; }
+.tagline { color: var(--fg-faint); font-size: 13px; }
+.spacer { flex: 1; }
+.pill {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--fg-muted); border: 1px solid var(--border);
+  border-radius: 999px; padding: 3px 10px;
+}
+.pill.live { color: var(--success); border-color: #14371f; background: #0d1c12; }
+
+/* ---------- layout ---------- */
+.wrap { flex: 1; width: min(880px, calc(100vw - 48px)); margin: 0 auto; padding: 40px 0 64px; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.8px; margin: 0 0 6px; }
+h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; margin: 0 0 14px; }
+.sub { color: var(--fg-muted); margin: 0 0 28px; }
+
+.card {
+  background: var(--layer-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 22px;
+  margin-bottom: 16px;
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.stat { background: var(--layer-2); border-radius: var(--r-md); padding: 14px 16px; }
+.stat .k { color: var(--fg-faint); font-size: 12px; margin-bottom: 4px; }
+.stat .v { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+.stat .v.mono { font-family: var(--font-mono); font-size: 14px; }
+
+.row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
+  background: var(--layer-2); margin-bottom: 8px;
+}
+.row .m { font-family: var(--font-mono); font-size: 12px; }
+.row .grow { flex: 1; }
+.method {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: var(--r-xs);
+  background: #0d1c12; color: var(--success);
+}
+.method.post { background: #0d1a2b; color: var(--accent-hover); }
+
+code {
+  font-family: var(--font-mono); font-size: 12.5px;
+  background: var(--layer-3); border-radius: var(--r-xs); padding: 2px 6px;
+}
+.foot { color: var(--fg-faint); font-size: 12px; text-align: center; margin-top: 28px; }
