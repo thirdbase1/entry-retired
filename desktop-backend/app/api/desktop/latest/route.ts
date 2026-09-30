@@ -11,7 +11,7 @@ export const runtime = "edge";
 export async function GET(_req: NextRequest) {
   const upstream = await fetch(
     "https://api.github.com/repos/thirdbase1/entry-desktop/releases/latest",
-    { headers: { Accept: "application/vnd.github+json" }, next: { revalidate: 300 } },
+    { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" },
   );
   if (!upstream.ok) {
     return Response.json({ error: "release lookup failed" }, { status: 502 });
