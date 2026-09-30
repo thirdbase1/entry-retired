@@ -1,6 +1,6 @@
 [package]
 name = "ventry"
-version = "0.1.11"
+version = "0.1.12"
 description = "Native desktop agent runtime for Entry"
 authors = ["thirdbase1"]
 edition = "2021"
