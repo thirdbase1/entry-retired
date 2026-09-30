@@ -597,3 +597,6 @@ Name is Ventry (product, identifier com.ventry.app, crate ventry_lib, binaries v
 
 ## Lesson 55
 The product page must carry a REAL screenshot of the shipped UI, never hand-written "mock" markup. Produce it by building the actual React components with only the Tauri IPC bridge stubbed, serving the bundle, and capturing via CDP at 1280x800. Keep index.html's real entry intact (point it at preview-build only for the capture build, then restore).
+
+## Lesson 56
+Test temp dirs keyed only by pid+millis collide when parallel tests open SessionLogs in the same millisecond — one test's log replays another's events and unrelated assertions flake (approval_service "never_policy" failed only in CI). Add an atomic sequence counter to every test temp-dir helper. Also: cargo target dir hit 25GB and filled the disk (os error 28) — cargo clean before long sessions.

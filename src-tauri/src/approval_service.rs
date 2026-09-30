@@ -212,10 +212,13 @@ mod tests {
     use std::path::PathBuf;
 
     fn temp_dir() -> PathBuf {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SEQ: AtomicU64 = AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
-            "entry-approval-test-{}-{}",
+            "entry-approval-test-{}-{}-{}",
             std::process::id(),
-            crate::session_log::now_ms()
+            crate::session_log::now_ms(),
+            SEQ.fetch_add(1, Ordering::SeqCst)
         ));
         std::fs::create_dir_all(&path).unwrap();
         path
