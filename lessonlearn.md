@@ -594,3 +594,6 @@ Session log IS the session: append-only JSONL envelope {type,seq,time,data,ignor
 
 ## Lesson 54
 Name is Ventry (product, identifier com.ventry.app, crate ventry_lib, binaries ventry). Only ONE installer per OS: NSIS (Windows), dmg, AppImage — never ship MSI+NSIS together (duplicate uninstall entries). UI is a distillation of the DeepSeek harness client, not a lookalike: keep the real dsh token NAMES (--dsw-alias-*, --dsw-specific-*, --dsw-radius-panel 28px, --dsh-chat-content-width 748px) and put the Vercel palette in the VALUES. Every label must be backed by a real command.
+
+## Lesson 55
+The product page must carry a REAL screenshot of the shipped UI, never hand-written "mock" markup. Produce it by building the actual React components with only the Tauri IPC bridge stubbed, serving the bundle, and capturing via CDP at 1280x800. Keep index.html's real entry intact (point it at preview-build only for the capture build, then restore).

@@ -249,3 +249,7 @@ code {
   .hero { padding-top: 56px; }
   .features, .download { padding-top: 72px; }
 }
+
+/* Real app screenshot frame (no mock markup — actual UI capture) */
+.app-shot-frame{margin:40px auto 0;max-width:980px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 40px rgba(0,0,0,.5);background:#0a0a0a}
+.app-shot{display:block;width:100%;height:auto}

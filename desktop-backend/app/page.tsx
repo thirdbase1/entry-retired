@@ -45,32 +45,7 @@ export default function HomePage() {
           </a>
         </div>
 
-        <div className="mock" aria-label="Ventry interface preview">
-          <div className="mock-side">
-            <div className="mock-side-title">New Session</div>
-            <div className="mock-item active">Welcome to Ventry</div>
-            <div className="mock-item">Refactor login validation</div>
-            <div className="mock-item">Analyze sales spreadsheet</div>
-            <div className="mock-item">Fix failing unit tests</div>
-            <div className="mock-side-title" style={{ marginTop: 18 }}>Workspace</div>
-            <div className="mock-item">entry-desktop</div>
-            <div className="mock-item">docs</div>
-          </div>
-          <div className="mock-chat">
-            <div className="mock-user">Could you introduce yourself?</div>
-            <div className="mock-ai">
-              I&apos;m Ventry, an AI coding agent running natively on your
-              computer. I can help with:
-              <ul>
-                <li><strong>Coding</strong> — explore repos, fix bugs, build features, run tests.</li>
-                <li><strong>Everyday work</strong> — organize files, analyze data, draft docs.</li>
-                <li><strong>Research</strong> — find information and verify facts.</li>
-                <li><strong>Background tasks</strong> — run scripts and track progress.</li>
-              </ul>
-            </div>
-            <div className="mock-composer">Describe what you want to build…</div>
-          </div>
-        </div>
+        <div className="app-shot-frame"><img src="/app-shot.png" alt="Ventry app" className="app-shot" /></div>
       </div>
       </section>
 
