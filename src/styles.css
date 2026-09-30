@@ -500,6 +500,111 @@ body[data-ds-dark-theme] { color-scheme: dark; }
   font-size: 12px; line-height: 18px;
 }
 
+/* ── Hero (HeroShell 1:1: mark + title, chip above the shared card) ────── */
+.hero-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-width: 0;
+  padding: 0 24px;
+}
+
+.hero-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-width: var(--dsh-composer-card-max-width, min(calc(100% - 16px), 952px));
+  overflow: visible;
+}
+
+/* figma 34:10411: mark + title, gap 10, centered; 26/32 wt500. */
+.hero-headline {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  row-gap: 12px;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.hero-mark {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+.hero-title-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Accessory hole in the composer card (workspace chip rides it). */
+.composer-accessory {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+
+/* Workspace chip (HeroShell .workspace). */
+.chip-workspace {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(100%, 360px);
+  min-height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: 500 13px/20px var(--dsw-font-family);
+  cursor: pointer;
+}
+
+.chip-workspace:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.chip-workspace-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-workspace .chip-chevron {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+}
+
+/* Context meter pill (ContextMeter .trigger): tertiary tabular caption. */
+.meter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 1px 8px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-variant-numeric: tabular-nums;
+  line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
+  white-space: nowrap;
+}
+
 /* ==================================================================
    Composer (InputBar .root/.card/.scroll/.input/.row/.add/.select/.primary)
    ================================================================== */
@@ -546,12 +651,26 @@ body[data-ds-dark-theme] { color-scheme: dark; }
   padding: 2px 8px 6px;
   min-width: 0;
 }
-.composer-mode {
-  display: flex; align-items: center; gap: 12px;
-  font-size: 11px; color: var(--dsw-alias-label-tertiary);
+.composer-tools {
+  display: flex; align-items: center; gap: 4px;
   min-width: 0;
 }
-.composer-mode select {
+
+/* Add trigger (InputBar .add): 28px ghost icon button. */
+.btn-add {
+  display: grid; place-items: center;
+  flex: none;
+  width: 28px; height: 28px;
+  padding: 0;
+  border: none; border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.btn-add:hover { background-color: var(--dsw-alias-interactive-bg-hover); }
+
+/* Access-mode chip (InputBar .select, reused for Workspace Write/Read Only). */
+.chip-access {
   height: 28px; max-width: 220px;
   padding: 0 20px 0 8px;
   border: none; border-radius: var(--dsw-radius-sm); outline: none;
@@ -565,8 +684,53 @@ body[data-ds-dark-theme] { color-scheme: dark; }
   line-height: 20px; font-weight: 500;
   white-space: nowrap; cursor: pointer; appearance: none;
 }
-.composer-mode select:hover { background-color: var(--dsw-alias-interactive-bg-hover); }
-.composer-mode select option { background: var(--dsw-static-neutral-bluish-850); color: var(--dsw-alias-label-primary); }
+.chip-access:hover { background-color: var(--dsw-alias-interactive-bg-hover); }
+.chip-access option { background: var(--dsw-static-neutral-bluish-850); color: var(--dsw-alias-label-primary); }
+
+.composer-trailing {
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* Message footer (AssistantMarkdown action row): quiet tertiary actions. */
+.msg-footer {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 4px;
+  min-width: 0;
+}
+.msg-action {
+  padding: 3px 8px;
+  border: none; border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: 400 var(--dsh-content-font-size-secondary, 13px)/20px var(--dsw-font-family);
+  white-space: nowrap; cursor: pointer;
+}
+.msg-action:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }
+.msg-action.active { color: var(--dsw-alias-state-business-primary); }
+
+/* Model trigger (ModelSelect .trigger): ghost chip with globe mark,
+   label + chevron, 13/20/500, tertiary label. */
+.chip-model {
+  display: inline-flex; align-items: center; gap: 4px;
+  max-width: 220px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: none; border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: 500 var(--dsh-content-font-size-secondary, 13px)/20px var(--dsw-font-family);
+  white-space: nowrap; cursor: pointer;
+}
+.chip-model:hover { background-color: var(--dsw-alias-interactive-bg-hover); }
+.chip-model svg { width: 16px; height: 16px; flex: none; color: var(--dsw-alias-label-tertiary); }
+.chip-model .chip-model-label {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.chip-model .chip-chevron {
+  width: 12px; height: 12px; flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
 
 /* Primary send (figma IconButton 34:10465): 34px circle, info-fill blue
    (button-info-fill 400 dark / 500 light), static white arrow. */
@@ -582,6 +746,7 @@ body[data-ds-dark-theme] { color-scheme: dark; }
   transform: translateY(-2px);
 }
 .btn-send:hover:not(:disabled) { background: var(--dsw-alias-button-info-hover); }
+.btn-send.stop { background: var(--dsw-alias-label-primary); }
 .btn-send:disabled { opacity: 0.4; cursor: default; }
 .btn-send svg { width: 16px; height: 16px; }
 

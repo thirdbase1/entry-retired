@@ -140,11 +140,15 @@ const emitEvent = () => {
 
 // Seed the persisted workspace (as the real app does after first use),
 // then let the app mount and push real stream frames.
-localStorage.setItem("entry-workspace", "C:\\Users\\nathaniel\\dev\\entry-desktop");
-localStorage.setItem("entry-session-id", "session-1790769500000");
-setTimeout(() => {
-  for (let i = 0; i < 3; i++) emitEvent();
-}, 300);
+// ?fresh=1 renders the pre-first-message hero (EmptyHero/HeroShell).
+const fresh = new URLSearchParams(location.search).has("fresh");
+if (!fresh) {
+  localStorage.setItem("entry-workspace", "C:\\Users\\nathaniel\\dev\\entry-desktop");
+  localStorage.setItem("entry-session-id", "session-1790769500000");
+  setTimeout(() => {
+    for (let i = 0; i < 3; i++) emitEvent();
+  }, 300);
+}
 
 createRoot(document.getElementById("root")!).render(
   <Workspace

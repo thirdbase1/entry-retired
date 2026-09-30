@@ -183,6 +183,45 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
 
   const toolLines = lines.filter((l) => l.stream.startsWith("tool."));
 
+  // Context meter pills (ContextMeter): turns·steps, tok·cache%, context%.
+  const steps = turns.reduce(
+    (n, t) => n + (t.kind === "turn" ? foldTurn(t.records ?? []).length : 0),
+    0,
+  );
+  const charTok = (s: string) => Math.ceil(s.length / 4);
+  const totalTok = turns.reduce((n, t) => {
+    if (t.kind !== "turn") return n;
+    for (const nd of foldTurn(t.records ?? [])) {
+      if (nd.kind === "user" || nd.kind === "assistant") n += charTok(nd.text);
+      if (nd.kind === "call")
+        n += charTok(nd.arguments) + charTok(nd.text ?? "");
+    }
+    return n;
+  }, 0);
+  const ctxWindow = 128_000;
+  const tokLabel =
+    totalTok >= 1000 ? `${(totalTok / 1000).toFixed(1)}K` : String(totalTok);
+  const cachePct = 0;
+  const ctxPct = Math.min(100, Math.round((totalTok / ctxWindow) * 100));
+
+  // Basename for the hero workspace chip (workspaceLabel in EmptyHero).
+  const workspaceBasename = workspace.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+  const currentModelName =
+    models.find((m) => m.id === model)?.name || model || "No models";
+
+  function cycleModel() {
+    if (models.length < 2) return;
+    const at = models.findIndex((m) => m.id === model);
+    onModel(models[(at + 1) % models.length].id);
+  }
+
+  function pickWorkspace() {
+    const next = window.prompt("Workspace directory", workspace);
+    if (next === null) return;
+    setWorkspace(next);
+    localStorage.setItem(WORKSPACE_KEY, next);
+  }
+
   return (
     <div className="app">
       <aside className="sidebarCol">
@@ -230,19 +269,6 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
                 Stop
               </button>
             )}
-            <select
-              className="model-picker"
-              value={model}
-              onChange={(e) => onModel(e.target.value)}
-              aria-label="Model"
-            >
-              {models.length === 0 && <option value="">No models</option>}
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name || m.id}
-                </option>
-              ))}
-            </select>
           </div>
         </header>
 
@@ -263,20 +289,21 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
 
         <div className="transcript" ref={scrollRef}>
           {turns.length === 0 && !busy ? (
-            <div className="empty-state">
-              <div className="empty-stack">
-                <div className="empty-headline">What should Entry work on?</div>
-                <p className="empty-sub">
-                  Point the workspace at a repository, then describe the task. Entry works
-                  natively on this machine and asks before running anything dangerous.
-                </p>
+            <div className="hero-root">
+              <div className="hero-stack">
+                <div className="hero-headline">
+                  <img src="/logos/entry.svg" alt="" className="hero-mark" />
+                  <span className="hero-title-group">
+                    <span>Into the Unknown</span>
+                  </span>
+                </div>
               </div>
             </div>
           ) : (
             <div className="chat-column">
               {turns.map((turn, ti) =>
                 turn.kind === "turn" ? (
-                  <TurnView key={ti} turn={turn} />
+                  <TurnView key={ti} turn={turn} onBranch={setDraft} />
                 ) : (
                   <div key={ti} className="rec-line">
                     {String((turn as unknown as Record<string, unknown>).kind ?? "")}
@@ -329,34 +356,104 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
               </div>
             </div>
           ) : (
-            <div className="composer">
-              <textarea
-                className="composer-input"
-                value={draft}
-                rows={1}
-                placeholder={
-                  workspace.trim() ? "Describe what you want Entry to do…" : "Choose a workspace first…"
-                }
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onKeyDown}
-                disabled={!workspace.trim()}
-              />
-              <div className="composer-bar">
-                <div className="composer-mode">
-                  <select
-                    value={composerMode}
-                    onChange={(e) => setComposerMode(e.target.value as "queue" | "steer")}
-                    aria-label="Enter while busy"
-                  >
-                    <option value="queue">queue</option>
-                    <option value="steer">steer</option>
-                  </select>
+            <>
+              <div className="composer">
+                {/* Hero accessory: the workspace chip rides the card's accessory
+                    hole before the first message (EmptyHero/HeroShell). */}
+                {turns.length === 0 && !busy && (
+                  <div className="composer-accessory">
+                    <button className="chip-workspace" onClick={pickWorkspace} title="Choose workspace">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path
+                          d="M1.5 4a1.5 1.5 0 0 1 1.5-1.5h3l1.5 2H13A1.5 1.5 0 0 1 14.5 6v6A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12V4Z"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                        />
+                      </svg>
+                      <span className="chip-workspace-label">{workspaceBasename || "Choose workspace"}</span>
+                      <svg className="chip-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                <textarea
+                  className="composer-input"
+                  value={draft}
+                  rows={1}
+                  placeholder="Message or run a task, / commands, @ files or sessions"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  disabled={!workspace.trim()}
+                />
+                <div className="composer-bar">
+                  <div className="composer-tools">
+                    <button className="btn-add" aria-label="Add files or run commands" title="Add files or run commands">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                    <select
+                      className="chip-access"
+                      value={composerMode}
+                      onChange={(e) => setComposerMode(e.target.value as "queue" | "steer")}
+                      aria-label="Access mode"
+                    >
+                      <option value="queue">Workspace Write</option>
+                      <option value="steer">Read Only</option>
+                    </select>
+                  </div>
+                  <div className="composer-trailing">
+                    <button
+                      className="chip-model"
+                      onClick={cycleModel}
+                      aria-label={`Select model, current ${currentModelName}`}
+                      title="Select model"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M2 8h12M8 2c-3.5 3.5-3.5 8.5 0 12M8 2c3.5 3.5 3.5 8.5 0 12" stroke="currentColor" strokeWidth="1" />
+                      </svg>
+                      <span className="chip-model-label">{currentModelName}</span>
+                      <svg viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    {busy ? (
+                      <button
+                        className="btn-send stop"
+                        onClick={() => interruptAgent(sessionId)}
+                        aria-label="Stop generating"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-send"
+                        onClick={send}
+                        disabled={!draft.trim()}
+                        aria-label="Send message"
+                      >
+                        <SendArrow />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <button className="btn-send" onClick={send} disabled={!draft.trim()} aria-label="Send">
-                  <SendArrow />
+              </div>
+              <div className="composer-dock" hidden={turns.length === 0}>
+                <button className="meter-pill" title="Turn and step counts">
+                  {turns.length} turns {steps} steps
+                </button>
+                <button className="meter-pill" title="Token usage and cache hit rate">
+                  {tokLabel} tok · Cache hit {cachePct}%
+                </button>
+                <button className="meter-pill" title="Context window usage">
+                  {ctxPct}% of context used
                 </button>
               </div>
-            </div>
+            </>
           )}
         </div>
       </main>
@@ -453,7 +550,7 @@ function callId(n: Node): string {
 }
 
 /** One turn: a TurnProcessNodeView trigger header row that folds the turn's records. */
-function TurnView({ turn }: { turn: TurnProjection }) {
+function TurnView({ turn, onBranch }: { turn: TurnProjection; onBranch?: (text: string) => void }) {
   const [open, setOpen] = useState(turn.status === "running");
   const nodes = foldTurn(turn.records ?? []);
   const calls = nodes.filter((n) => n.kind === "call");
@@ -484,7 +581,7 @@ function TurnView({ turn }: { turn: TurnProjection }) {
       {open && (
         <div className="turn-body">
           {nodes.map((n, i) => (
-            <NodeView key={i} node={n} />
+            <NodeView key={i} node={n} onBranch={onBranch} />
           ))}
         </div>
       )}
@@ -496,7 +593,48 @@ function TurnView({ turn }: { turn: TurnProjection }) {
   );
 }
 
-function NodeView({ node }: { node: Node }) {
+/** Message footer (AssistantMarkdown action row): Copy · feedback · branch. */
+function MessageFooter({ text, onBranch }: { text: string; onBranch?: (text: string) => void }) {
+  const [copied, setCopied] = useState(false);
+  const [vote, setVote] = useState<"up" | "down" | null>(null);
+  return (
+    <div className="msg-footer">
+      <button
+        className="msg-action"
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          });
+        }}
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+      <button
+        className={`msg-action${vote === "up" ? " active" : ""}`}
+        aria-label="Good response"
+        onClick={() => setVote(vote === "up" ? null : "up")}
+      >
+        Good response
+      </button>
+      <button
+        className={`msg-action${vote === "down" ? " active" : ""}`}
+        aria-label="Bad response"
+        onClick={() => setVote(vote === "down" ? null : "down")}
+      >
+        Bad response
+      </button>
+      <button
+        className="msg-action"
+        onClick={() => onBranch?.(text)}
+      >
+        Branch into a new conversation
+      </button>
+    </div>
+  );
+}
+
+function NodeView({ node, onBranch }: { node: Node; onBranch?: (text: string) => void }) {
   const [open, setOpen] = useState(false);
 
   if (node.kind === "user") {
@@ -510,6 +648,7 @@ function NodeView({ node }: { node: Node }) {
     return (
       <div className="rec-assistant" data-part="response">
         <Markdown>{node.text}</Markdown>
+        <MessageFooter text={node.text} onBranch={onBranch} />
       </div>
     );
   }
