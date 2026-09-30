@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { DownloadSection } from "./download";
 
 export const metadata: Metadata = {
-  title: "Ventry | The agent that works on your machine",
+  title: "Entry | The agent that works on your machine",
   description:
-    "Ventry is the native desktop agent: everyday work, coding, research, and background tasks — running locally on your machine.",
+    "Entry is the native desktop agent: everyday work, coding, research, and background tasks — running locally on your machine.",
 };
 
 export default function HomePage() {
@@ -13,8 +13,8 @@ export default function HomePage() {
       <header className="nav">
         <div className="nav-inner wrap-site">
           <a className="brand" href="/">
-            <img src="/entry.svg" alt="Ventry" />
-            <span>Ventry</span>
+            <img src="/entry.svg" alt="Entry" />
+            <span>Entry</span>
           </a>
           <nav className="nav-links">
             <a href="#features">Features</a>
@@ -30,12 +30,12 @@ export default function HomePage() {
       <section className="hero"><div className="wrap-site">
         <span className="badge">Preview</span>
         <h1>
-          Ventry
+          Entry
           <br />
           <span className="hero-sub">Ready to use. Right now.</span>
         </h1>
         <p className="hero-desc">
-          Everyday tasks, coding, or your own agent — it starts here. Ventry
+          Everyday tasks, coding, or your own agent — it starts here. Entry
           runs its tools, files, and processes natively on your machine.
         </p>
         <div className="hero-cta">
@@ -45,7 +45,7 @@ export default function HomePage() {
           </a>
         </div>
 
-        <div className="app-shot-frame"><img src="/app-shot.png" alt="Ventry app" className="app-shot" /></div>
+        <div className="app-shot-frame"><img src="/app-shot.png" alt="Entry app" className="app-shot" /></div>
       </div>
       </section>
 
@@ -60,7 +60,7 @@ export default function HomePage() {
             <div className="feat-tag">NATIVE CORE</div>
             <h3>Agent = Model + Harness</h3>
             <p>
-              The model is the soul; the harness is what lets it work. Ventry's
+              The model is the soul; the harness is what lets it work. Entry's
               Rust core owns workspace boundaries, process lifecycles, and
               output streaming — on your machine, not in a cloud.
             </p>
@@ -90,7 +90,7 @@ export default function HomePage() {
       <DownloadSection />
 
       <footer className="foot"><div className="wrap-site" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-        <span>© 2026 Ventry · the desktop is the execution environment</span>
+        <span>© 2026 Entry · the desktop is the execution environment</span>
         <span>
           <a href="https://github.com/thirdbase1/entry-desktop" target="_blank" rel="noreferrer">GitHub</a>
           {" · "}

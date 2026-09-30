@@ -1,4 +1,4 @@
-/* Ventry — Geist design tokens
+/* Entry — Geist design tokens
    Spec: docs/geist-design.md (studied from vercel.com/geist).
    Dark-first per goal.md UI quality bar; Geist Sans + Geist Mono bundled
    from the `geist` package (OFL) into public/fonts. */
@@ -19,7 +19,7 @@
   font-display: swap;
 }
 
-/* Ventry — UI distilled from the DeepSeek harness client
+/* Entry — UI distilled from the DeepSeek harness client
    (dsh-study packages/client/ui-theme design-platform.css: token names,
    alias layers, radius scale 4/8/12/16/20/28, interactive hover alphas,
    label tiers). Color VALUES are the Vercel/Geist palette:

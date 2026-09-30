@@ -600,3 +600,6 @@ The product page must carry a REAL screenshot of the shipped UI, never hand-writ
 
 ## Lesson 56
 Test temp dirs keyed only by pid+millis collide when parallel tests open SessionLogs in the same millisecond — one test's log replays another's events and unrelated assertions flake (approval_service "never_policy" failed only in CI). Add an atomic sequence counter to every test temp-dir helper. Also: cargo target dir hit 25GB and filled the disk (os error 28) — cargo clean before long sessions.
+
+## Lesson 57
+Product name is "Entry" (user reversed the Ventry rename). Keep it in: Workspace.tsx, LoginScreen.tsx, styles.css comments, lib.rs docstring, tauri.conf.json productName (drives installer name Entry_x.y.z_*), site pages. Lib crate name ventry_lib stays — internal only, not user-facing.

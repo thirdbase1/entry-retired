@@ -150,7 +150,7 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
       <aside className="side">
         <div className="side-head">
           <img src="/logos/entry.svg" alt="" className="side-logo" />
-          <span>Ventry</span>
+          <span>Entry</span>
         </div>
         <button className="side-new" onClick={newSession}>
           New session
@@ -225,9 +225,9 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
           <div className="chat-column">
             {turns.length === 0 && !busy && (
               <div className="empty-state">
-                <h2>What should Ventry work on?</h2>
+                <h2>What should Entry work on?</h2>
                 <p>
-                  Point the workspace at a repository, then describe the task. Ventry works
+                  Point the workspace at a repository, then describe the task. Entry works
                   natively on this machine and asks before running anything dangerous.
                 </p>
               </div>
@@ -292,7 +292,7 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
                 className="composer-input"
                 value={draft}
                 rows={1}
-                placeholder="Describe what you want Ventry to do…"
+                placeholder="Describe what you want Entry to do…"
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={onKeyDown}
                 disabled={!workspace.trim()}

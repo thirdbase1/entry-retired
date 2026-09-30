@@ -1,4 +1,4 @@
-//! Ventry native core.
+//! Entry native core.
 //!
 //! Phase 2 runtime shape:
 //!
@@ -591,5 +591,5 @@ pub fn run() {
             job_output
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Ventry");
+        .expect("error while running Entry");
 }

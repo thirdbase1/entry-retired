@@ -50,7 +50,7 @@ export function DownloadSection() {
   return (
     <section className="download" id="download">
       <div className="wrap-site">
-        <h2>Ventry for desktop</h2>
+        <h2>Entry for desktop</h2>
         <p className="dl-desc">
           {rel ? (
             <>
