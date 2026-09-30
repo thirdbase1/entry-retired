@@ -28,6 +28,10 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
     };
   }, []);
 
+  // Deep link: the approval page's "Return to Entry" fires entry://auth,
+  // which focuses this window via single-instance. Nothing to read — the
+  // poll loop completes sign-in on its own.
+
   async function begin() {
     if (begunRef.current) return;
     begunRef.current = true;

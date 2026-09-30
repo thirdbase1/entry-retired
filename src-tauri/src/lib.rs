@@ -375,6 +375,7 @@ async fn run_agent(app: tauri::AppHandle, input: AgentRequest) -> Result<String,
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Second launch: focus the existing main window instead of a new one.
             if let Some(w) = app.get_webview_window("main") {

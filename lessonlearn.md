@@ -564,3 +564,8 @@ backend only, entry-agents untouched:
 ## Lesson 48 - Blank second window + OTP in UI
 - window.open(url) inside a Tauri webview spawns a blank child webview window, NOT the system browser - always use tauri-plugin-opener only; add tauri-plugin-single-instance so double-launch focuses instead of duplicates.
 - Never render the device code in the desktop UI (DeepSeek-style): browser-only approval; the approval page shows the code, the app stays clean.
+
+## Lesson 49 - No code in UI + deep-link relaunch
+- Never render the device code in ANY app UI (user security requirement): the approval page must not display it either; server-side lookup by user_code is enough.
+- Relaunch after browser login = custom URI scheme: Tauri deep-link plugin (entry://) + single-instance focus, mirroring dsh's setAsDefaultProtocolClient(dsh) + open-url handler.
+- GitHub/Vercel OAuth apps need BOTH callback URLs when two domains serve: entry-desktop-backend.vercel.app and desktop.entry-agents.dev.

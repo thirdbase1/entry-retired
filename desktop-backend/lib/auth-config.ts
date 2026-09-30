@@ -27,6 +27,11 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL:
     process.env.BETTER_AUTH_URL ?? "https://entry-desktop-backend.vercel.app",
+  trustedOrigins: [
+    "https://entry-desktop-backend.vercel.app",
+    "https://desktop.entry-agents.dev",
+    "https://entry-agents.dev",
+  ],
   database: drizzleAdapter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sql as any,

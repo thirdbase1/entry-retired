@@ -21,7 +21,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import postgres from "postgres";
 
-const ALLOWED_ORIGINS = new Set(["tauri://localhost", "http://tauri.localhost"]);
+const ALLOWED_ORIGINS = new Set([
+  "tauri://localhost",
+  "http://tauri.localhost",
+  "https://desktop.entry-agents.dev",
+  "https://entry-agents.dev",
+]);
 // Lazy client — postgres() throws at import time with an empty URL, and Next
 // collects page data before env is loaded in some build phases.
 let _sql: ReturnType<typeof postgres> | null = null;
