@@ -49,6 +49,8 @@ export function App() {
   const [models, setModels] = useState<CatalogModel[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
+  // NOTE: must live above the early returns — hooks cannot be conditional.
+  const [wsInfo, setWsInfo] = useState<WorkspaceInfo | null>(null);
 
   useEffect(() => {
     sessionInfo()
@@ -164,7 +166,6 @@ export function App() {
     }
   }
 
-  const [wsInfo, setWsInfo] = useState<WorkspaceInfo | null>(null);
   const detectWorkspace = useCallback(async () => {
     try {
       setWsInfo(await workspaceInfo("."));

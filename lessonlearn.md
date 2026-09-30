@@ -579,3 +579,6 @@ backend only, entry-agents untouched:
 - Token endpoint is https://api.vercel.com/login/oauth/token (NOT /v2/oauth/access_token, which is the management API and rejects authorization codes).
 - Authorization requires PKCE S256: generate verifier at authorize, persist beside the state row, send code_verifier at exchange. GitHub tolerates PKCE too - one code path for both providers.
 - Vercel access tokens live 1h; refresh_token (offline_access) rotates on every use - store and rotate.
+
+## Lesson 52 - Hooks after early return, round two
+- Blank window after successful sign-in, again a useState declared BELOW the `if (!signedIn) return <LoginScreen/>` early return. The login tree renders fewer hooks than the signed-in tree -> React kills the subtree -> blank. RULE: every useState/useEffect/useCallback goes at the top of the component, before ANY return. Search before release: declare-then-return ordering.
