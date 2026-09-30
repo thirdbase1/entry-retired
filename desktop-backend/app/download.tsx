@@ -15,7 +15,11 @@ function fmtSize(n: number) {
   return `${Math.max(1, Math.round(n / 1024))} KB`;
 }
 
-/** Polled live from the GitHub release API — never stale, no rebuild needed. */
+/**
+ * Windows is the only public download for now; every other platform shows as
+ * "Coming soon" with its real OS logo. The version and the Windows link are
+ * polled straight from the GitHub release API so the page never goes stale.
+ */
 export function DownloadSection() {
   const [rel, setRel] = useState<Rel | null>(null);
 
@@ -29,7 +33,7 @@ export function DownloadSection() {
         );
         if (res.ok && alive) setRel((await res.json()) as Rel);
       } catch {
-        /* keep last good */
+        /* keep the last good value */
       }
     };
     load();
@@ -40,111 +44,81 @@ export function DownloadSection() {
     };
   }, []);
 
-  const pick = (t: RegExp) =>
-    rel?.assets.find((a) => t.test(a.name)) ?? null;
-  const win = pick(/x64-setup\.exe$/);
-  const msi = pick(/x64_en-US\.msi$/);
-  const mac = pick(/aarch64\.dmg$/);
-  const app = pick(/amd64\.AppImage$/);
-  const deb = pick(/amd64\.deb$/);
-  const rpm = pick(/x86_64\.rpm$/);
+  const win =
+    rel?.assets.find((a) => /x64-setup\.exe$/.test(a.name)) ?? null;
 
   return (
     <section className="download" id="download">
-      <h2>Entry Desktop for desktop</h2>
-      <p className="dl-desc">
-        Work in the background, edit local files, and handle long, complex
-        tasks with ease.{" "}
-        {rel ? (
-          <>
-            Latest release:{" "}
-            <code>
-              {rel.tag_name}
-            </code>
-            <span className="dl-live">
-              ● auto-updates
-            </span>
-          </>
-        ) : (
-          "Fetching the latest release…"
-        )}
-      </p>
+      <div className="wrap-site">
+        <h2>Entry Desktop for desktop</h2>
+        <p className="dl-desc">
+          {rel ? (
+            <>
+              Latest release <code>{rel.tag_name}</code>
+              <span className="dl-live">● always current</span>
+            </>
+          ) : (
+            "Loading the latest release…"
+          )}
+        </p>
 
-      <div className="dl-grid">
-        {win ? (
-          <a className="dl-card primary" href={win.browser_download_url}>
-            <img src="/os/windows.svg" alt="" className="dl-logo" />
-            <div className="dl-body">
-              <strong>Windows</strong>
-              <span>
-                Windows 10 or later ·{" "}
-                {fmtSize(win.size)}
-              </span>
+        <div className="dl-grid">
+          {win ? (
+            <a className="dl-card primary" href={win.browser_download_url}>
+              <img src="/os/windows.svg" alt="" className="dl-logo" />
+              <div className="dl-body">
+                <strong>Windows</strong>
+                <span>
+                  Windows 10 or later · installer · {fmtSize(win.size)}
+                </span>
+              </div>
+              <em>Download</em>
+            </a>
+          ) : (
+            <div className="dl-card primary">
+              <img src="/os/windows.svg" alt="" className="dl-logo" />
+              <div className="dl-body">
+                <strong>Windows</strong>
+                <span>Fetching the latest installer…</span>
+              </div>
+              <em>Download</em>
             </div>
-            <em>Download</em>
-          </a>
-        ) : null}
-        {msi ? (
-          <a className="dl-card" href={msi.browser_download_url}>
-            <img src="/os/windows.svg" alt="" className="dl-logo" />
-            <div className="dl-body">
-              <strong>Windows</strong>
-              <span>MSI package · {fmtSize(msi.size)}</span>
-            </div>
-            <em>Download</em>
-          </a>
-        ) : null}
-        {mac ? (
-          <a className="dl-card primary" href={mac.browser_download_url}>
+          )}
+
+          <div className="dl-card soon">
             <img src="/os/apple.svg" alt="" className="dl-logo" />
             <div className="dl-body">
               <strong>macOS</strong>
-              <span>Apple silicon · {fmtSize(mac.size)}</span>
+              <span>Apple silicon &amp; Intel · universal build</span>
             </div>
-            <em>Download</em>
-          </a>
+            <em className="soon-tag">Coming soon</em>
+          </div>
+
+          <div className="dl-card soon">
+            <img src="/os/linux.svg" alt="" className="dl-logo" />
+            <div className="dl-body">
+              <strong>Linux</strong>
+              <span>AppImage · deb · rpm</span>
+            </div>
+            <em className="soon-tag">Coming soon</em>
+          </div>
+        </div>
+
+        {rel ? (
+          <p className="dl-more">
+            Windows is the supported build today. macOS and Linux are in
+            progress —{" "}
+            <a
+              href={`https://github.com/thirdbase1/entry-desktop/releases/tag/${rel.tag_name}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              see the release
+            </a>{" "}
+            for every artifact as it ships.
+          </p>
         ) : null}
-
-        <div className="dl-card soon">
-          <img src="/os/apple.svg" alt="" className="dl-logo" />
-          <div className="dl-body">
-            <strong>macOS Intel</strong>
-            <span>Coming soon</span>
-          </div>
-          <em className="soon-tag">Soon</em>
-        </div>
-        <div className="dl-card soon">
-          <img src="/os/linux.svg" alt="" className="dl-logo" />
-          <div className="dl-body">
-            <strong>Linux</strong>
-            <span>AppImage · coming soon</span>
-          </div>
-          <em className="soon-tag">Soon</em>
-        </div>
-        <div className="dl-card soon">
-          <img src="/os/linux.svg" alt="" className="dl-logo" />
-          <div className="dl-body">
-            <strong>Linux</strong>
-            <span>deb / rpm · coming soon</span>
-          </div>
-          <em className="soon-tag">Soon</em>
-        </div>
       </div>
-
-      {rel && (app || deb || rpm) ? (
-        <p className="dl-more">
-          Linux builds exist for this release (AppImage/deb/rpm) but the public
-          page lists Windows and macOS first — grab them on{" "}
-          <a
-            href={`https://github.com/thirdbase1/entry-desktop/releases/tag/${rel.tag_name}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub
-          </a>
-          .
-        </p>
-      ) : null}
     </section>
   );
 }

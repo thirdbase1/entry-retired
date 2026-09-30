@@ -11,7 +11,7 @@ export default function HomePage() {
   return (
     <div className="site">
       <header className="nav">
-        <div className="nav-inner">
+        <div className="nav-inner wrap-site">
           <a className="brand" href="/">
             <img src="/entry.svg" alt="Entry" />
             <span>Entry Desktop</span>
@@ -27,7 +27,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="hero">
+      <section className="hero"><div className="wrap-site">
         <span className="badge">Preview</span>
         <h1>
           Entry Desktop
@@ -71,9 +71,10 @@ export default function HomePage() {
             <div className="mock-composer">Describe what you want to build…</div>
           </div>
         </div>
+      </div>
       </section>
 
-      <section className="features" id="features">
+      <section className="features" id="features"><div className="wrap-site">
         <h2>
           Expanding capabilities.
           <br />
@@ -108,17 +109,19 @@ export default function HomePage() {
             </p>
           </div>
         </div>
+      </div>
       </section>
 
       <DownloadSection />
 
-      <footer className="foot">
+      <footer className="foot"><div className="wrap-site" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <span>© 2026 Entry · the desktop is the execution environment</span>
         <span>
           <a href="https://github.com/thirdbase1/entry-desktop" target="_blank" rel="noreferrer">GitHub</a>
           {" · "}
           <a href="https://entry-agents.dev" target="_blank" rel="noreferrer">entry-agents.dev</a>
         </span>
+      </div>
       </footer>
     </div>
   );
