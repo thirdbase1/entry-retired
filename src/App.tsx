@@ -67,6 +67,28 @@ export function App() {
       .catch(() => setSessionLoaded(true));
   }, []);
 
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    onProcessOutput((stream, text) => {
+      setLines((prev) => [...prev.slice(-500), { stream, text }]);
+    }).then((off) => {
+      unlisten = off;
+    });
+    return () => unlisten?.();
+  }, []);
+
+  useEffect(() => {
+    let dispose: (() => void) | undefined;
+    listen<AgentEvent>("entry://agent-event", (event) => {
+      setEvents((current) => [...current, event.payload]);
+      setStatus(event.payload.kind);
+      if (event.payload.kind === "task.completed" || event.payload.kind === "task.error") {
+        setBusy(false);
+      }
+    }).then((unlisten) => { dispose = unlisten; });
+    return () => dispose?.();
+  }, []);
+
   function refreshSession() {
     sessionInfo().then((s) => {
       setSession(s);
@@ -94,30 +116,6 @@ export function App() {
   if (!session?.signedIn) {
     return <LoginScreen onSignedIn={refreshSession} />;
   }
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    onProcessOutput((stream, text) => {
-      setLines((prev) => [...prev.slice(-500), { stream, text }]);
-    }).then((off) => {
-      unlisten = off;
-    });
-    return () => unlisten?.();
-  }, []);
-
-
-  useEffect(() => {
-    let dispose: (() => void) | undefined;
-    listen<AgentEvent>("entry://agent-event", (event) => {
-      setEvents((current) => [...current, event.payload]);
-      setStatus(event.payload.kind);
-      if (event.payload.kind === "task.completed" || event.payload.kind === "task.error") {
-        setBusy(false);
-      }
-    }).then((unlisten) => { dispose = unlisten; });
-    return () => dispose?.();
-  }, []);
-
   async function runAgent() {
     if (!workspace.trim() || !request.trim()) return;
     setBusy(true);

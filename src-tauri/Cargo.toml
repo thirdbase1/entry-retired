@@ -1,6 +1,6 @@
 [package]
 name = "entry-desktop"
-version = "0.1.0"
+version = "0.1.1"
 description = "Native desktop agent runtime for Entry"
 authors = ["thirdbase1"]
 edition = "2021"

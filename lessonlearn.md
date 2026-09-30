@@ -550,3 +550,8 @@ backend only, entry-agents untouched:
 - child.kill() on Windows kills only the direct child; cmd /C grandchild processes survive. Spawn the real executable for timeout tests (ping -n as sleep).
 - macOS temp dirs are symlinked (/var -> /private/var); compare via canonicalize.
 - Artifacts: NSIS .exe + .msi, .dmg, .AppImage + .deb + .rpm.
+
+## Lesson 46 - Login was broken by two silent bugs
+- Tauri v2 plugins are permission-gated: without src-tauri/capabilities/default.json granting opener:allow-open-url, openUrl() silently denies and the browser never launches.
+- React hooks-order violation (useEffect after conditional return) crashes with "rendered fewer hooks" the moment the user signs in - move every hook above conditionals.
+- npm lockfiles inherit ~/.npmrc registry mirrors - never ship machine-local registry URLs (see lesson from desktop-backend).
