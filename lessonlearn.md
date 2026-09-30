@@ -617,3 +617,6 @@ In Tauri v2, `plugin:event|listen` args carry `handler` = the transformCallback 
 
 ## Lesson 62 — DSH markdown port
 Vendor ui-primitives' MarkdownText.module.css + CodeBlock.module.css verbatim (strip `:global()`), render with the same remark-parse/remark-gfm mdast mapping, and emit the sheets' own class names (.markdown, .block.md-code-block, .bannerWrap/.banner/.infostring/.content). Code block chrome relies on --dsw-radius-lg from base.css — class names must match the sheet, not the semantic alias (md-code-block alone resolves nothing).
+
+## Lesson 63 — v0.1.11 distilled release
+Release chain that works end-to-end: bump package.json + Cargo.toml + tauri.conf.json (Cargo.lock follows via cargo check), commit+push, tag, watch tag run (NOT the main-push run — delete the 'main' draft), publish the tag draft with notes. Site screenshot: browser-harness CDP capture is unreliable here; use scripts/cdp_shot.py (one-shot chromium + Page.captureScreenshot over websocket, websockets lib) at 1440x900 @2x. Vision-analyze can 504 for a whole session — DOM-geometry audits (getBoundingClientRect + computed styles) are the authoritative verification.
