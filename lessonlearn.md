@@ -590,3 +590,7 @@ backend only, entry-agents untouched:
 
 ## Lesson 53
 Session log IS the session: append-only JSONL envelope {type,seq,time,data,ignorable?}; conversation rebuild = exact replay; model-visible iff logged. Approval = closed outcome union (allowed-once|rejected|cancelled|unavailable), fail-closed, ask|never policy enforced INSIDE the service before dispatch, turn-enclosed audit pair asked+decided. Jobs: <kind>-N ids, output ring 256K live/16M spill, kill is only a request. UI: Enter submits (IME-safe), busy-Enter = queue|steer setting, approval takes over composer with Enter=allow / Esc=reject.
+
+
+## Lesson 54
+Name is Ventry (product, identifier com.ventry.app, crate ventry_lib, binaries ventry). Only ONE installer per OS: NSIS (Windows), dmg, AppImage — never ship MSI+NSIS together (duplicate uninstall entries). UI is a distillation of the DeepSeek harness client, not a lookalike: keep the real dsh token NAMES (--dsw-alias-*, --dsw-specific-*, --dsw-radius-panel 28px, --dsh-chat-content-width 748px) and put the Vercel palette in the VALUES. Every label must be backed by a real command.

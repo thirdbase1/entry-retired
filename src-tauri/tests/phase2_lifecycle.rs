@@ -8,9 +8,9 @@
 //! manager via real spawns using a stub AppHandle through the supervisor
 //! path that does not require an app: see each test).
 
-use entry_desktop_lib::path_security::is_path_within_directory;
-use entry_desktop_lib::process_manager::{ProcessEnd, ProcessManager};
-use entry_desktop_lib::workspace::{Workspace, WorkspaceStatus};
+use ventry_lib::path_security::is_path_within_directory;
+use ventry_lib::process_manager::{ProcessEnd, ProcessManager};
+use ventry_lib::workspace::{Workspace, WorkspaceStatus};
 
 fn tmpdir(name: &str) -> std::path::PathBuf {
     let base = std::env::temp_dir().join(format!("entry-p2-{name}-{}", std::process::id()));
@@ -115,7 +115,7 @@ fn spawn_simple(
     mgr: &ProcessManager,
     cmd: &str,
     cwd: &str,
-) -> entry_desktop_lib::process_manager::ProcessRecord {
+) -> ventry_lib::process_manager::ProcessRecord {
     // Event emission goes to a dropped channel when no app handle exists;
     // ProcessManager::spawn takes &AppHandle — for tests we use the
     // supervisor's record path via spawn_with_recorder.

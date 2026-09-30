@@ -1,12 +1,12 @@
 [package]
-name = "entry-desktop"
-version = "0.1.1"
+name = "ventry"
+version = "0.1.9"
 description = "Native desktop agent runtime for Entry"
 authors = ["thirdbase1"]
 edition = "2021"
 
 [lib]
-name = "entry_desktop_lib"
+name = "ventry_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

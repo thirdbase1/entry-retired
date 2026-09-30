@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { DownloadSection } from "./download";
 
 export const metadata: Metadata = {
-  title: "Entry Desktop | The agent that works on your machine",
+  title: "Ventry | The agent that works on your machine",
   description:
-    "Entry Desktop is the native desktop app for the Entry agent: everyday work, coding, research, and background tasks — running locally on your machine.",
+    "Ventry is the native desktop agent: everyday work, coding, research, and background tasks — running locally on your machine.",
 };
 
 export default function HomePage() {
@@ -13,8 +13,8 @@ export default function HomePage() {
       <header className="nav">
         <div className="nav-inner wrap-site">
           <a className="brand" href="/">
-            <img src="/entry.svg" alt="Entry" />
-            <span>Entry Desktop</span>
+            <img src="/entry.svg" alt="Ventry" />
+            <span>Ventry</span>
           </a>
           <nav className="nav-links">
             <a href="#features">Features</a>
@@ -30,12 +30,12 @@ export default function HomePage() {
       <section className="hero"><div className="wrap-site">
         <span className="badge">Preview</span>
         <h1>
-          Entry Desktop
+          Ventry
           <br />
           <span className="hero-sub">Ready to use. Right now.</span>
         </h1>
         <p className="hero-desc">
-          Everyday tasks, coding, or your own agent — it starts here. Entry
+          Everyday tasks, coding, or your own agent — it starts here. Ventry
           runs its tools, files, and processes natively on your machine.
         </p>
         <div className="hero-cta">
@@ -45,10 +45,10 @@ export default function HomePage() {
           </a>
         </div>
 
-        <div className="mock" aria-label="Entry Desktop interface preview">
+        <div className="mock" aria-label="Ventry interface preview">
           <div className="mock-side">
             <div className="mock-side-title">New Session</div>
-            <div className="mock-item active">Welcome to Entry</div>
+            <div className="mock-item active">Welcome to Ventry</div>
             <div className="mock-item">Refactor login validation</div>
             <div className="mock-item">Analyze sales spreadsheet</div>
             <div className="mock-item">Fix failing unit tests</div>
@@ -59,7 +59,7 @@ export default function HomePage() {
           <div className="mock-chat">
             <div className="mock-user">Could you introduce yourself?</div>
             <div className="mock-ai">
-              I&apos;m Entry, an AI coding agent running natively on your
+              I&apos;m Ventry, an AI coding agent running natively on your
               computer. I can help with:
               <ul>
                 <li><strong>Coding</strong> — explore repos, fix bugs, build features, run tests.</li>
@@ -85,7 +85,7 @@ export default function HomePage() {
             <div className="feat-tag">NATIVE CORE</div>
             <h3>Agent = Model + Harness</h3>
             <p>
-              The model is the soul; the harness is what lets it work. Entry&apos;s
+              The model is the soul; the harness is what lets it work. Ventry's
               Rust core owns workspace boundaries, process lifecycles, and
               output streaming — on your machine, not in a cloud.
             </p>
@@ -115,7 +115,7 @@ export default function HomePage() {
       <DownloadSection />
 
       <footer className="foot"><div className="wrap-site" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-        <span>© 2026 Entry · the desktop is the execution environment</span>
+        <span>© 2026 Ventry · the desktop is the execution environment</span>
         <span>
           <a href="https://github.com/thirdbase1/entry-desktop" target="_blank" rel="noreferrer">GitHub</a>
           {" · "}

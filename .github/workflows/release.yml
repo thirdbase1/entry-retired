@@ -65,8 +65,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Entry Desktop ${{ github.ref_name }}"
-          releaseBody: "Entry Desktop ${{ github.ref_name }} — seamless device-flow login, live agent through the Entry gateway, native window execution environment. Installers: Windows (NSIS exe / MSI), macOS (dmg), Linux (AppImage/deb/rpm)."
+          releaseName: "Ventry ${{ github.ref_name }}"
+          releaseBody: "Ventry ${{ github.ref_name }} — seamless device-flow login, live agent through the Entry gateway, native window execution environment. Installers: Windows (NSIS exe / MSI), macOS (dmg), Linux (AppImage/deb/rpm)."
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

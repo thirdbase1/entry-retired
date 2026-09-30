@@ -76,8 +76,8 @@ export function LoginScreen({ onSignedIn }: LoginScreenProps) {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <img src="/logos/entry.svg" alt="Entry" className="login-logo" />
-        <h1>Sign in to Entry</h1>
+        <img src="/logos/entry.svg" alt="Ventry" className="login-logo" />
+        <h1>Sign in to Ventry</h1>
         {phase === "idle" && (
           <>
             <p className="login-sub">

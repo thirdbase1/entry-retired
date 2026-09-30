@@ -13,7 +13,7 @@
 
 use crate::session_log::SessionLog;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

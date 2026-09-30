@@ -2,8 +2,8 @@
 //! workspace-relative cwd gate -> approval gate -> real child execution.
 //! These run against real processes, no Tauri runtime required.
 
-use entry_desktop_lib::approval::command_needs_approval;
-use entry_desktop_lib::path_security::{is_path_within_directory, resolve_bash_working_directory};
+use ventry_lib::approval::command_needs_approval;
+use ventry_lib::path_security::{is_path_within_directory, resolve_bash_working_directory};
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicU64};

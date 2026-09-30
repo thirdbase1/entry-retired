@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Entry Desktop",
-  description: "Backend for the Entry desktop agent",
+  title: "Ventry",
+  description: "Ventry backend — sign-in, models, and device auth for the Ventry desktop agent",
   icons: [{ rel: "icon", url: "/entry.svg", type: "image/svg+xml" }],
 };
 

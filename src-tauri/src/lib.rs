@@ -1,4 +1,4 @@
-//! Entry Desktop native core.
+//! Ventry native core.
 //!
 //! Phase 2 runtime shape:
 //!
@@ -586,5 +586,5 @@ pub fn run() {
             job_output
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Entry Desktop");
+        .expect("error while running Ventry");
 }
