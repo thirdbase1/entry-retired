@@ -329,7 +329,10 @@ mod tests {
         log.append("message.user", serde_json::json!({"text": "a"}))
             .unwrap();
         let path = dir.join(".entry").join("sessions").join("s1.jsonl");
-        let mut file = std::fs::OpenOptions::new().append(true).open(&path).unwrap();
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .unwrap();
         writeln!(file, "{{\"type\":\"message.user\",\"seq\":2").unwrap();
         assert_eq!(log.replay().unwrap().len(), 1);
         assert_eq!(SessionLog::open(&dir, "s1").unwrap().seq(), 1);

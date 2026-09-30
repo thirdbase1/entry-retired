@@ -267,12 +267,7 @@ mod tests {
         t.join().unwrap();
         assert_eq!(outcome, ApprovalOutcome::Rejected);
 
-        let kinds: Vec<String> = log
-            .replay()
-            .unwrap()
-            .into_iter()
-            .map(|e| e.kind)
-            .collect();
+        let kinds: Vec<String> = log.replay().unwrap().into_iter().map(|e| e.kind).collect();
         assert!(kinds.contains(&"approval/asked".to_string()));
         assert!(kinds.contains(&"approval/decided".to_string()));
     }

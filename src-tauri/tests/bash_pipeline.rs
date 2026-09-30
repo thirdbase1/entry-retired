@@ -2,12 +2,12 @@
 //! workspace-relative cwd gate -> approval gate -> real child execution.
 //! These run against real processes, no Tauri runtime required.
 
-use ventry_lib::approval::command_needs_approval;
-use ventry_lib::path_security::{is_path_within_directory, resolve_bash_working_directory};
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
+use ventry_lib::approval::command_needs_approval;
+use ventry_lib::path_security::{is_path_within_directory, resolve_bash_working_directory};
 
 // Minimal mirror of Executor::run's core loop, minus Tauri event emission,
 // so the same supervision path is exercised deterministically in CI.

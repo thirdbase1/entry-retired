@@ -170,7 +170,12 @@ impl JobRegistry {
         Ok(text)
     }
 
-    pub fn complete(&self, session_id: &str, id: &str, exit_code: Option<i32>) -> Result<(), String> {
+    pub fn complete(
+        &self,
+        session_id: &str,
+        id: &str,
+        exit_code: Option<i32>,
+    ) -> Result<(), String> {
         let job = self.job(session_id, id)?;
         {
             let mut job = job.lock().unwrap();
@@ -220,7 +225,9 @@ impl JobRegistry {
             return Err("Job result was already delivered.".into());
         }
         job.result_taken = true;
-        job.result.clone().ok_or_else(|| "Job has no result yet.".into())
+        job.result
+            .clone()
+            .ok_or_else(|| "Job has no result yet.".into())
     }
 
     pub fn store_result(&self, session_id: &str, id: &str, result: &str) -> Result<(), String> {
@@ -308,7 +315,10 @@ mod tests {
         let j = job.lock().unwrap();
         assert_eq!(j.ring.len(), RING_LIVE_BYTES);
         assert_eq!(j.head_offset, 100u64);
-        assert_eq!(j.projection.ring_total_bytes, (RING_LIVE_BYTES + 100) as u64);
+        assert_eq!(
+            j.projection.ring_total_bytes,
+            (RING_LIVE_BYTES + 100) as u64
+        );
     }
 
     #[test]

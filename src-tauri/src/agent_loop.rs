@@ -162,7 +162,9 @@ pub async fn run(
                 serde_json::from_str::<Value>(&call.function.arguments)
                     .ok()
                     .and_then(|args| {
-                        args.get("command").and_then(Value::as_str).map(str::to_string)
+                        args.get("command")
+                            .and_then(Value::as_str)
+                            .map(str::to_string)
                     })
             } else {
                 None
@@ -172,10 +174,11 @@ pub async fn run(
                 .map(crate::approval::command_needs_approval)
                 .unwrap_or(false);
             if needs {
-                let reason = format!("Command needs approval: {}", bash_command.unwrap_or_default());
-                let outcome = deps
-                    .approvals
-                    .request(&mut log, &call.id, tool, &reason);
+                let reason = format!(
+                    "Command needs approval: {}",
+                    bash_command.unwrap_or_default()
+                );
+                let outcome = deps.approvals.request(&mut log, &call.id, tool, &reason);
                 if let Err(denial) = gate(outcome) {
                     let denial = if outcome == ApprovalOutcome::Unavailable {
                         format!("{denial} ({APPROVAL_TIMEOUT_HINT})")
@@ -215,10 +218,7 @@ pub async fn run(
                 tool_calls: None,
                 tool_call_id: Some(call.id.clone()),
             });
-            log.append(
-                "message.tool",
-                json!({"callId": call.id, "text": text}),
-            )?;
+            log.append("message.tool", json!({"callId": call.id, "text": text}))?;
         }
 
         if interrupted_mid_turn {
@@ -258,24 +258,45 @@ async fn execute_tool(
         })
         .to_string()),
         "read_file" => {
-            let path = args.get("path").and_then(Value::as_str).ok_or("path is required")?;
+            let path = args
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or("path is required")?;
             let offset = args.get("offset").and_then(Value::as_i64).unwrap_or(1);
             let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(2000) as usize;
             runtime.read_file(path, offset, limit).await
         }
         "write_file" => {
-            let path = args.get("path").and_then(Value::as_str).ok_or("path is required")?;
-            let content = args.get("content").and_then(Value::as_str).ok_or("content is required")?;
+            let path = args
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or("path is required")?;
+            let content = args
+                .get("content")
+                .and_then(Value::as_str)
+                .ok_or("content is required")?;
             runtime.write_file(path, content).await
         }
         "edit_file" => {
-            let path = args.get("path").and_then(Value::as_str).ok_or("path is required")?;
-            let old = args.get("old").and_then(Value::as_str).ok_or("old is required")?;
-            let new = args.get("new").and_then(Value::as_str).ok_or("new is required")?;
+            let path = args
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or("path is required")?;
+            let old = args
+                .get("old")
+                .and_then(Value::as_str)
+                .ok_or("old is required")?;
+            let new = args
+                .get("new")
+                .and_then(Value::as_str)
+                .ok_or("new is required")?;
             runtime.edit_file(path, old, new).await
         }
         "bash" => {
-            let command = args.get("command").and_then(Value::as_str).ok_or("command is required")?;
+            let command = args
+                .get("command")
+                .and_then(Value::as_str)
+                .ok_or("command is required")?;
             let cwd = args.get("cwd").and_then(Value::as_str);
             // Non-approval-listed commands run directly; listed ones were
             // already gated above.
@@ -325,4 +346,3 @@ fn emit(
     log.append_ignorable(kind, json!({"message": message}))?;
     Ok(())
 }
-

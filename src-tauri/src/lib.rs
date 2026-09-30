@@ -79,11 +79,11 @@ mod backend;
 mod device_auth;
 mod integrations;
 mod jobs;
-mod session_log;
 mod model_selection;
 mod network;
 mod plugin;
 mod runtime;
+mod session_log;
 
 use serde::Deserialize;
 
@@ -514,7 +514,8 @@ fn set_approval_policy(
 /// Read the session log projection (turns → records) for UI replay.
 #[tauri::command]
 fn session_events(workspace: String, session_id: String) -> Result<Vec<serde_json::Value>, String> {
-    let workspace = dunce::canonicalize(&workspace).map_err(|e| format!("Invalid workspace: {e}"))?;
+    let workspace =
+        dunce::canonicalize(&workspace).map_err(|e| format!("Invalid workspace: {e}"))?;
     let log = session_log::SessionLog::open(&workspace, &session_id)?;
     log.project()
 }
@@ -527,7 +528,11 @@ fn job_list(host: tauri::State<'_, AgentHost>, session_id: String) -> Vec<serde_
 
 /// Kill is only a request — the registry records it and the runner converges.
 #[tauri::command]
-fn job_kill(host: tauri::State<'_, AgentHost>, session_id: String, job_id: String) -> Result<(), String> {
+fn job_kill(
+    host: tauri::State<'_, AgentHost>,
+    session_id: String,
+    job_id: String,
+) -> Result<(), String> {
     host.jobs.kill(&session_id, &job_id, "user requested")
 }
 
