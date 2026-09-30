@@ -105,6 +105,51 @@ export function App() {
     });
   }
 
+  const detectWorkspace = useCallback(async () => {
+    try {
+      setWsInfo(await workspaceInfo("."));
+    } catch {
+      setWsInfo(null);
+    }
+  }, []);
+
+  const execute = useCallback(async () => {
+    setLines([]);
+    setResult(null);
+    setBusy(true);
+    try {
+      if (await commandApprovalRequired(command)) {
+        setStatus("Refused: command matches a dangerous pattern (runtime approval gate)");
+        return;
+      }
+      const r = await bash(command.trim());
+      setResult(r);
+      setChip(r.cancelled ? null : r.success ? "ok" : "fail");
+      setChipText(
+        r.cancelled
+          ? "Cancelled"
+          : `Exit ${r.exitCode ?? "?"} · ${r.durationMs}ms${r.truncated ? " · Truncated" : ""}`
+      );
+    } catch (err) {
+      setStatus(`Refused or failed: ${String(err)}`);
+    } finally {
+      setBusy(false);
+    }
+  }, [command]);
+
+  const doRead = useCallback(async () => {
+    setReadOut(null);
+    setBusy(true);
+    try {
+      setReadOut(await readFile(readPath.trim()));
+      setStatus(`Read ${readPath}`);
+    } catch (err) {
+      setStatus(`Read refused: ${String(err)}`);
+    } finally {
+      setBusy(false);
+    }
+  }, [readPath]);
+
   if (!sessionLoaded) {
     return (
       <main className="shell">
@@ -166,50 +211,6 @@ export function App() {
     }
   }
 
-  const detectWorkspace = useCallback(async () => {
-    try {
-      setWsInfo(await workspaceInfo("."));
-    } catch {
-      setWsInfo(null);
-    }
-  }, []);
-
-  const execute = useCallback(async () => {
-    setLines([]);
-    setResult(null);
-    setBusy(true);
-    try {
-      if (await commandApprovalRequired(command)) {
-        setStatus("Refused: command matches a dangerous pattern (runtime approval gate)");
-        return;
-      }
-      const r = await bash(command.trim());
-      setResult(r);
-      setChip(r.cancelled ? null : r.success ? "ok" : "fail");
-      setChipText(
-        r.cancelled
-          ? "Cancelled"
-          : `Exit ${r.exitCode ?? "?"} · ${r.durationMs}ms${r.truncated ? " · Truncated" : ""}`
-      );
-    } catch (err) {
-      setStatus(`Refused or failed: ${String(err)}`);
-    } finally {
-      setBusy(false);
-    }
-  }, [command]);
-
-  const doRead = useCallback(async () => {
-    setReadOut(null);
-    setBusy(true);
-    try {
-      setReadOut(await readFile(readPath.trim()));
-      setStatus(`Read ${readPath}`);
-    } catch (err) {
-      setStatus(`Read refused: ${String(err)}`);
-    } finally {
-      setBusy(false);
-    }
-  }, [readPath]);
 
   return (
     <main className="shell">

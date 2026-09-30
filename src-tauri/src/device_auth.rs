@@ -182,6 +182,7 @@ pub async fn session_info(app: tauri::AppHandle) -> Result<SessionInfo, String> 
             creditBalanceCents: Some(me.billing.creditBalanceCents),
         }),
         Err(e) if e == "SESSION_EXPIRED" => {
+            // Token genuinely rejected: sign out locally.
             BackendSession::clear(&app).map_err(|e| e)?;
             Ok(SessionInfo {
                 signedIn: false,
@@ -191,13 +192,26 @@ pub async fn session_info(app: tauri::AppHandle) -> Result<SessionInfo, String> 
                 creditBalanceCents: None,
             })
         }
-        Err(e) => Err(e),
+        // Transient failure (offline, 5xx, timeout): KEEP the stored session —
+        // the user is still signed in; surface degraded state instead of a
+        // silent logout that would blank the app into the login screen.
+        Err(_e) => Ok(SessionInfo {
+            signedIn: true,
+            username: Some(session.username.clone()),
+            email: Some(session.email.clone()),
+            plan: None,
+            creditBalanceCents: None,
+        }),
     }
 }
 
-/// Sign out: clear stored session.
+/// Sign out: revoke the session server-side, then clear the local copy.
 #[tauri::command]
 pub async fn sign_out(app: tauri::AppHandle) -> Result<bool, String> {
+    if let Some(session) = BackendSession::load(&app) {
+        // Best-effort revoke — a network failure must never block local sign-out.
+        let _ = crate::backend::revoke_session(&session).await;
+    }
     BackendSession::clear(&app)?;
     Ok(true)
 }

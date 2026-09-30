@@ -582,3 +582,8 @@ backend only, entry-agents untouched:
 
 ## Lesson 52 - Hooks after early return, round two
 - Blank window after successful sign-in, again a useState declared BELOW the `if (!signedIn) return <LoginScreen/>` early return. The login tree renders fewer hooks than the signed-in tree -> React kills the subtree -> blank. RULE: every useState/useEffect/useCallback goes at the top of the component, before ANY return. Search before release: declare-then-return ordering.
+
+## Lesson 53 - Two Windows installers = upgrade prompt hell
+- Shipping BOTH NSIS setup.exe and WiX MSI per release means installing setup.exe over an MSI leaves two uninstall entries and NSIS shows its "recommended to uninstall the current version first" page. DeepSeek-grade UX: ONE NSIS per-user installer (bundle.targets without msi) — upgrades in place silently.
+## Lesson 54 - Auth lifecycle: transient failure must not log out
+- session_info returned Err on any network error -> frontend .catch() treated it as signed-out -> blank/login flash. Law: only 401 (SESSION_EXPIRED) clears the session; offline/5xx keeps the stored session and degrades. Sign-out now revokes server-side (POST /api/desktop/signout deletes the auth_sessions row) before clearing locally.

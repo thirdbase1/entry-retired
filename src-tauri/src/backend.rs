@@ -126,6 +126,25 @@ pub async fn fetch_me(session: &BackendSession) -> Result<MeResponse, String> {
     res.json().await.map_err(|e| format!("Bad response: {e}"))
 }
 
+/// POST /api/desktop/signout — revoke the session row server-side (best effort).
+pub async fn revoke_session(session: &BackendSession) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{}/api/desktop/signout", session.backend_url))
+        .bearer_auth(&session.session_token)
+        .header("x-entry-desktop", "tauri")
+        .header("Origin", "tauri://localhost")
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Backend unreachable: {e}"))?;
+    if res.status().is_success() {
+        Ok(())
+    } else {
+        Err(format!("Backend error {}", res.status()))
+    }
+}
+
 /// Fetch /api/desktop/models — the plan-gated gateway catalog.
 pub async fn fetch_models(session: &BackendSession) -> Result<Vec<CatalogModel>, String> {
     let client = reqwest::Client::new();
