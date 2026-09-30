@@ -20,17 +20,36 @@ interface Props {
   onSignOut: () => void;
 }
 
-const SESSION_KEY = "ventry-session-id";
-const WORKSPACE_KEY = "ventry-workspace";
+const SESSION_KEY = "entry-session-id";
+const WORKSPACE_KEY = "entry-workspace";
 
 type StreamLine = { stream: string; text: string };
 
+/** The 34px blue-circle send arrow (figma IconButton 34:10465). */
+function SendArrow() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 19V5M12 5l-6 6M12 5l6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /**
- * The conversation surface, distilled from the DeepSeek harness client:
- * sidebar (session + workspace), a single 748px chat column with turn
- * trigger rows, right-aligned user bubbles, tool results as code blocks,
- * the running status with divider line, and a floating panel-radius
- * composer card. Approval takes the composer's place as its own card.
+ * The conversation surface, distilled 1:1 from the DeepSeek harness client:
+ * AppFrame (sidebar column 248px + center column), ConversationRoot header
+ * (76px, 0.5px l3 rule, dsh .select chips), ChatView column at
+ * --dsh-chat-content-width with 6/12/16 flow gaps, MessageItem right-aligned
+ * user bubble (radius-xl, specific-bubble fill), ui-tool DisclosureRow tool
+ * rows (16px leading, 13/24 title, 2px dot, ioCard body), the running
+ * status with the deep-diving color and divider, and the InputBar composer
+ * card (panel radius 28, input-major fill, elevation-soft, 34px info-fill
+ * send circle). Approval replaces the composer (ApprovalPanel takeover).
  */
 export function Workspace({ username, plan, balance, model, models, onModel, onSignOut }: Props) {
   const [workspace, setWorkspace] = useState(() => localStorage.getItem(WORKSPACE_KEY) ?? "");
@@ -147,7 +166,7 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
 
   return (
     <div className="app">
-      <aside className="side">
+      <aside className="sidebarCol">
         <div className="side-head">
           <img src="/logos/entry.svg" alt="" className="side-logo" />
           <span>Entry</span>
@@ -180,30 +199,32 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
         </div>
       </aside>
 
-      <main className="main">
+      <main className="centerCol main">
         <header className="chat-head">
-          <select
-            className="model-picker"
-            value={model}
-            onChange={(e) => onModel(e.target.value)}
-            aria-label="Model"
-          >
-            {models.length === 0 && <option value="">No models</option>}
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name || m.id}
-              </option>
-            ))}
-          </select>
           <span className={`run-state${busy ? " live" : ""}`}>{busy ? "running" : "ready"}</span>
-          <button className="head-btn" onClick={() => setShowJobs((v) => !v)}>
-            Jobs
-          </button>
-          {busy && (
-            <button className="head-btn danger" onClick={() => interruptAgent(sessionId)}>
-              Stop
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <button className="head-btn" onClick={() => setShowJobs((v) => !v)}>
+              Jobs
             </button>
-          )}
+            {busy && (
+              <button className="head-btn danger" onClick={() => interruptAgent(sessionId)}>
+                Stop
+              </button>
+            )}
+            <select
+              className="model-picker"
+              value={model}
+              onChange={(e) => onModel(e.target.value)}
+              aria-label="Model"
+            >
+              {models.length === 0 && <option value="">No models</option>}
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name || m.id}
+                </option>
+              ))}
+            </select>
+          </div>
         </header>
 
         {showJobs && (
@@ -222,45 +243,47 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
         )}
 
         <div className="transcript" ref={scrollRef}>
-          <div className="chat-column">
-            {turns.length === 0 && !busy && (
-              <div className="empty-state">
-                <h2>What should Entry work on?</h2>
-                <p>
+          {turns.length === 0 && !busy ? (
+            <div className="empty-state">
+              <div className="empty-stack">
+                <div className="empty-headline">What should Entry work on?</div>
+                <p className="empty-sub">
                   Point the workspace at a repository, then describe the task. Entry works
                   natively on this machine and asks before running anything dangerous.
                 </p>
               </div>
-            )}
-
-            {turns.map((turn, ti) =>
-              turn.kind === "turn" ? (
-                <TurnView key={ti} turn={turn} />
-              ) : (
-                <div key={ti} className="rec-line">
-                  {String((turn as unknown as Record<string, unknown>).kind ?? "")}
-                </div>
-              ),
-            )}
-
-            {busy && (
-              <div className="running">
-                <div className="running-divider" />
-                <div className="running-content">
-                  <span className="running-dot" />
-                  <span className="running-text">
-                    {lines.length > 0 ? lines[lines.length - 1].text.slice(0, 120) : "Working…"}
-                  </span>
-                </div>
-                {lines.slice(-12).map((l, i) => (
-                  <div key={i} className="live-line">
-                    <span className="live-kind">{l.stream}</span>
-                    <span className="live-text">{l.text}</span>
+            </div>
+          ) : (
+            <div className="chat-column">
+              {turns.map((turn, ti) =>
+                turn.kind === "turn" ? (
+                  <TurnView key={ti} turn={turn} />
+                ) : (
+                  <div key={ti} className="rec-line">
+                    {String((turn as unknown as Record<string, unknown>).kind ?? "")}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                ),
+              )}
+
+              {busy && (
+                <div className="running">
+                  <div className="running-divider" />
+                  <div className="running-content">
+                    <span className="running-icon" />
+                    <span className="running-text">
+                      {lines.length > 0 ? lines[lines.length - 1].text.slice(0, 120) : "Working…"}
+                    </span>
+                  </div>
+                  {lines.slice(-12).map((l, i) => (
+                    <div key={i} className="live-line">
+                      <span className="live-kind">{l.stream}</span>
+                      <span className="live-text">{l.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="composer-root">
@@ -292,24 +315,26 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
                 className="composer-input"
                 value={draft}
                 rows={1}
-                placeholder="Describe what you want Entry to do…"
+                placeholder={
+                  workspace.trim() ? "Describe what you want Entry to do…" : "Choose a workspace first…"
+                }
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={onKeyDown}
                 disabled={!workspace.trim()}
               />
               <div className="composer-bar">
-                <label className="composer-mode">
-                  Enter while busy
+                <div className="composer-mode">
                   <select
                     value={composerMode}
                     onChange={(e) => setComposerMode(e.target.value as "queue" | "steer")}
+                    aria-label="Enter while busy"
                   >
                     <option value="queue">queue</option>
                     <option value="steer">steer</option>
                   </select>
-                </label>
-                <button className="btn-send" onClick={send} disabled={!draft.trim()}>
-                  Send
+                </div>
+                <button className="btn-send" onClick={send} disabled={!draft.trim()} aria-label="Send">
+                  <SendArrow />
                 </button>
               </div>
             </div>
@@ -320,7 +345,7 @@ export function Workspace({ username, plan, balance, model, models, onModel, onS
   );
 }
 
-/** One turn: a trigger header row that folds the turn's records. */
+/** One turn: a TurnProcessNodeView trigger header row that folds the turn's records. */
 function TurnView({ turn }: { turn: TurnProjection }) {
   const [open, setOpen] = useState(turn.status === "running");
   const records = turn.records ?? [];
@@ -330,9 +355,17 @@ function TurnView({ turn }: { turn: TurnProjection }) {
   const status = turn.status ?? "unknown";
 
   return (
-    <div className={`turn ${status}`}>
+    <div className={`turn ${status}`} data-part="turn-process">
       <button className="turn-trigger" data-open={open} onClick={() => setOpen((v) => !v)}>
-        <span className="turn-caret">▾</span>
+        <svg className="turn-caret" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path
+            d="M3 4.5L6 7.5L9 4.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
         <span className="turn-status">{status}</span>
         <span className="turn-meta">
           {tools.length} tool{tools.length === 1 ? "" : "s"}
@@ -364,7 +397,7 @@ function RecordView({ record }: { record: TurnRecord }) {
 
   if (record.kind === "message.user") {
     return (
-      <div className="user-row">
+      <div className="user-row" data-part="turn-trigger">
         <div className="user-bubble">{String(record.data?.text ?? "")}</div>
       </div>
     );
@@ -372,14 +405,12 @@ function RecordView({ record }: { record: TurnRecord }) {
   if (record.kind === "message.assistant") {
     const calls = (record.data?.toolCalls as unknown[]) ?? [];
     return (
-      <div className="rec-assistant">
+      <div className="rec-assistant" data-part="response">
         {record.data?.text ? <p>{String(record.data.text)}</p> : null}
         {calls.length > 0 && (
           <div className="rec-calls">
             {calls.map((c, i) => (
-              <span key={i} className="rec-call">
-                {(c as { name?: string }).name}
-              </span>
+              <ToolRow key={i} name={(c as { name?: string }).name ?? "tool"} />
             ))}
           </div>
         )}
@@ -388,12 +419,18 @@ function RecordView({ record }: { record: TurnRecord }) {
   }
   if (record.kind === "message.tool") {
     const text = String(record.data?.text ?? "");
+    const isErr = text.startsWith("REFUSED") || text.startsWith("APPROVAL_REQUIRED");
     return (
-      <div className="rec-tool">
-        <button className="rec-toggle" onClick={() => setOpen((v) => !v)}>
-          {open ? "▾" : "▸"} tool result
-        </button>
-        {open && <pre className="rec-pre">{text}</pre>}
+      <div className="rec-calls">
+        <ToolRow
+          name="tool result"
+          summary={text.split("\n")[0]}
+          error={isErr}
+          expandable
+          open={open}
+          onToggle={() => setOpen((v) => !v)}
+          body={open ? text : undefined}
+        />
       </div>
     );
   }
@@ -412,6 +449,84 @@ function RecordView({ record }: { record: TurnRecord }) {
     <div className="rec-line">
       <span>{record.kind}</span>
       {message && <span>{message}</span>}
+    </div>
+  );
+}
+
+/**
+ * A ui-tool DisclosureRow tool row: 16px leading glyph box, 13/24 title,
+ * 2px dot separator, truncated 13/24 summary, optional expandable ioCard.
+ */
+function ToolRow({
+  name,
+  summary,
+  error,
+  expandable,
+  open,
+  onToggle,
+  body,
+}: {
+  name: string;
+  summary?: string;
+  error?: boolean;
+  expandable?: boolean;
+  open?: boolean;
+  onToggle?: () => void;
+  body?: string;
+}) {
+  const row = (
+    <div
+      className="tool-row"
+      data-expandable={expandable ? "true" : undefined}
+      data-open={open ? "true" : undefined}
+      onClick={expandable ? onToggle : undefined}
+    >
+      <span className="tool-leading">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path
+            d="M9.5 1.5H5A1.5 1.5 0 0 0 3.5 3v10A1.5 1.5 0 0 0 5 14.5h6a1.5 1.5 0 0 0 1.5-1.5V4.5L9.5 1.5Z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+          />
+        </svg>
+      </span>
+      <span className="tool-title">{name}</span>
+      {summary !== undefined && (
+        <>
+          <span className="tool-sep" />
+          <span className="tool-summary" data-error={error ? "true" : undefined}>
+            {summary}
+          </span>
+        </>
+      )}
+      {expandable && (
+        <svg className="tool-chevron" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path
+            d="M3 4.5L6 7.5L9 4.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </div>
+  );
+
+  if (!expandable) return <div>{row}</div>;
+  return (
+    <div>
+      {row}
+      {open && body !== undefined && (
+        <div className="tool-body">
+          <div className="tool-io">
+            <span className="tool-io-label">OUT</span>
+            <span className="tool-io-text" data-error={error ? "true" : undefined}>
+              {body}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

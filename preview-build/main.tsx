@@ -86,8 +86,8 @@ const emitEvent = () => {
 
 // Seed the persisted workspace (as the real app does after first use),
 // then let the app mount and push real stream frames.
-localStorage.setItem("ventry-workspace", "C:\\Users\\nathaniel\\dev\\entry-desktop");
-localStorage.setItem("ventry-session-id", "session-1790769500000");
+localStorage.setItem("entry-workspace", "C:\\Users\\nathaniel\\dev\\entry-desktop");
+localStorage.setItem("entry-session-id", "session-1790769500000");
 setTimeout(() => {
   for (let i = 0; i < 3; i++) emitEvent();
 }, 300);
